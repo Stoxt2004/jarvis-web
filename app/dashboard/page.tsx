@@ -1,4 +1,4 @@
-// src/app/dashboard/page.tsx - Aggiornato con integrazione abbonamento
+// src/app/dashboard/page.tsx
 "use client"
 
 import { useState, useEffect } from 'react'
@@ -11,7 +11,10 @@ import AIAssistant from '@/components/ai/AIAssistant'
 import { useAIStore } from '@/lib/store/aiStore'
 import { useWorkspaceStore } from '@/lib/store/workspaceStore'
 import { useSubscription } from '@/hooks/useSubscription'
-import UsageStats from '@/components/subscription/UsageStats'
+
+// Nuovi componenti per strategia premium
+import PremiumDashboard from '@/components/premium/PremiumDashboard'
+import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
 import UserMenu from '@/components/user/UserMenu'
 import Link from 'next/link'
 
@@ -89,9 +92,13 @@ export default function Dashboard() {
       
       {/* Area di lavoro principale */}
       <div className="flex-1 relative flex">
-        {/* Area principale */}
+        {/* Area principale - Mostra Dashboard Premium o Workspace in base al piano */}
         <div className="flex-1 relative">
-          <Workspace />
+          {!subscription.isPremium ? (
+            <PremiumDashboard />
+          ) : (
+            <Workspace />
+          )}
           
           {/* AI Assistant overlay */}
           {isAssistantActive && (
@@ -125,8 +132,8 @@ export default function Dashboard() {
             </div>
           )}
           
-          {/* Statistiche utilizzo */}
-          <UsageStats />
+          {/* Statistiche utilizzo e altri widget laterali */}
+          {/* ... */}
         </div>
       </div>
       
@@ -144,6 +151,9 @@ export default function Dashboard() {
           </Link>
         </div>
       </footer>
+      
+      {/* Notificatore limiti (fluttuante) */}
+      <UsageLimitsNotifier />
     </main>
   )
 }
