@@ -1,19 +1,21 @@
-// src/components/user/UserMenu.tsx
+// src/components/user/UserMenu.tsx - Aggiornato con informazioni abbonamento
 "use client"
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { FiUser, FiSettings, FiCreditCard, FiHelpCircle, FiLogOut } from 'react-icons/fi'
+import { FiUser, FiSettings, FiCreditCard, FiHelpCircle, FiLogOut, FiTrendingUp } from 'react-icons/fi'
 import { useEffect, useRef } from 'react'
+import { SubscriptionData } from '@/hooks/useSubscription'
 
 interface UserMenuProps {
   user: any
+  subscription: SubscriptionData
   onClose: () => void
   onLogout: () => void
 }
 
-export default function UserMenu({ user, onClose, onLogout }: UserMenuProps) {
+export default function UserMenu({ user, subscription, onClose, onLogout }: UserMenuProps) {
   const router = useRouter()
   const menuRef = useRef<HTMLDivElement>(null)
   
@@ -30,6 +32,17 @@ export default function UserMenu({ user, onClose, onLogout }: UserMenuProps) {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [onClose])
+  
+  // Formatta la data di fine abbonamento
+  const formatSubscriptionEndDate = () => {
+    if (!subscription.currentPeriodEnd) return null
+    
+    return new Date(subscription.currentPeriodEnd).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })
+  }
   
   return (
     <motion.div
@@ -59,10 +72,21 @@ export default function UserMenu({ user, onClose, onLogout }: UserMenuProps) {
           </div>
         </div>
         
-        <div className="mt-2 text-xs">
-          <span className="px-2 py-1 rounded-full bg-surface text-white/80">
-            Piano {user?.plan === 'PREMIUM' ? 'Premium' : user?.plan === 'TEAM' ? 'Team' : 'Free'}
-          </span>
+        {/* Piano attuale */}
+        <div className="mt-3 flex items-center justify-between">
+          <div className={`px-2 py-1 rounded-full text-xs ${
+            subscription.isPremium 
+              ? 'bg-primary/20 text-primary' 
+              : 'bg-surface text-white/80'
+          }`}>
+            Piano {subscription.plan === 'TEAM' ? 'Team' : subscription.plan === 'PREMIUM' ? 'Premium' : 'Free'}
+          </div>
+          
+          {subscription.currentPeriodEnd && subscription.isActive && (
+            <div className="text-xs text-white/50">
+              Rinnovo: {formatSubscriptionEndDate()}
+            </div>
+          )}
         </div>
       </div>
       
@@ -89,11 +113,25 @@ export default function UserMenu({ user, onClose, onLogout }: UserMenuProps) {
         <MenuItem 
           icon={<FiCreditCard size={16} />} 
           label="Abbonamento"
+          badge={!subscription.isActive && subscription.plan !== 'FREE' ? 'Scaduto' : null}
+          badgeColor={!subscription.isActive ? 'bg-red-500/20 text-red-400' : ''}
           onClick={() => {
             onClose()
             router.push('/dashboard/subscription')
           }}
         />
+        
+        {!subscription.isPremium && (
+          <MenuItem 
+            icon={<FiTrendingUp size={16} />} 
+            label="Passa a Premium"
+            className="text-primary"
+            onClick={() => {
+              onClose()
+              router.push('/dashboard/subscription')
+            }}
+          />
+        )}
         
         <MenuItem 
           icon={<FiHelpCircle size={16} />} 
@@ -122,11 +160,13 @@ export default function UserMenu({ user, onClose, onLogout }: UserMenuProps) {
 interface MenuItemProps {
   icon: React.ReactNode
   label: string
+  badge?: string | null
+  badgeColor?: string
   onClick: () => void
   className?: string
 }
 
-function MenuItem({ icon, label, onClick, className = '' }: MenuItemProps) {
+function MenuItem({ icon, label, badge, badgeColor, onClick, className = '' }: MenuItemProps) {
   return (
     <button
       className={`w-full px-4 py-2 flex items-center gap-3 hover:bg-white/5 text-left ${className}`}
@@ -134,6 +174,12 @@ function MenuItem({ icon, label, onClick, className = '' }: MenuItemProps) {
     >
       <span className="text-white/70">{icon}</span>
       <span>{label}</span>
+      
+      {badge && (
+        <span className={`ml-auto text-xs px-1.5 py-0.5 rounded ${badgeColor || 'bg-primary/20 text-primary'}`}>
+          {badge}
+        </span>
+      )}
     </button>
   )
 }

@@ -8,6 +8,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Subscription {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String?  @unique
+  stripeSubscriptionId String? @unique
+  stripePriceId   String?
+  stripeCurrentPeriodEnd DateTime?
+  plan            Plan     @default(FREE)
+  status          SubscriptionStatus @default(INACTIVE)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  TRIALING
+  INACTIVE
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -53,6 +75,8 @@ model User {
   preferences   Json?     @default("{}")
   workspaces    Workspace[]
   files         File[]
+
+  Subscription Subscription?
 }
 
 model VerificationToken {
