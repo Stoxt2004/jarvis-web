@@ -15,7 +15,6 @@ interface CommonPanelProps {
 }
 
 const PanelComponents = {
-  browser: dynamic(() => import('@/components/core/panels/BrowserPanel')),
   editor: dynamic(() => import('@/components/core/panels/EditorPanel')),
   fileManager: dynamic(() => import('@/components/core/panels/FileManagerPanel')),
   terminal: dynamic(() => import('@/components/core/panels/TerminalPanel')),
@@ -46,11 +45,11 @@ export default function Panel({ panel }: PanelProps) {
   
   // Renderizza il contenuto del pannello in base al tipo
   const renderPanelContent = () => {
-    if (!panel.type || !PanelComponents[panel.type]) {
+    if (!panel.type || !(panel.type in PanelComponents)) {
       return <div className="flex items-center justify-center h-full">Tipo di pannello non supportato</div>
     }
     
-    const Component = PanelComponents[panel.type]
+    const Component = PanelComponents[panel.type as keyof typeof PanelComponents]
     return <Component panel={panel} />
   }
   
