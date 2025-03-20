@@ -8,6 +8,7 @@ import { FiSave, FiPlay, FiCode, FiSettings, FiDownload, FiPlus, FiTrash2, FiUpl
 import { Panel, useWorkspaceStore } from '@/lib/store/workspaceStore'
 import { toast } from 'sonner'
 
+
 interface EditorPanelProps {
   panel: Panel
 }
