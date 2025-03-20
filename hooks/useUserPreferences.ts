@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 
 // Tipo per le preferenze utente
 export interface UserPreferences {
-  theme: 'dark' | 'light' | 'system'
   language: string
   timezone: string
   notifications: {
@@ -21,7 +20,6 @@ export interface UserPreferences {
 
 // Preferenze predefinite
 const defaultPreferences: UserPreferences = {
-  theme: 'dark',
   language: 'it',
   timezone: 'Europe/Rome',
   notifications: {
@@ -110,31 +108,10 @@ export function useUserPreferences() {
     return true
   }
 
-  // Applica le preferenze del tema
+  // Assicura che il tema scuro sia sempre applicato
   useEffect(() => {
-    if (!isLoading) {
-      // Applica il tema
-      const applyTheme = () => {
-        const theme = preferences.theme === 'system'
-          ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-          : preferences.theme
-        
-        document.documentElement.classList.remove('dark', 'light')
-        document.documentElement.classList.add(theme)
-      }
-      
-      applyTheme()
-      
-      // Ascolta i cambiamenti di tema di sistema
-      if (preferences.theme === 'system') {
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-        const handleChange = () => applyTheme()
-        
-        mediaQuery.addEventListener('change', handleChange)
-        return () => mediaQuery.removeEventListener('change', handleChange)
-      }
-    }
-  }, [preferences.theme, isLoading])
+    document.documentElement.classList.add('dark')
+  }, [])
 
   return {
     preferences,

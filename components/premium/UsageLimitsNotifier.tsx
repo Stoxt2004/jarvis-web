@@ -6,16 +6,20 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { getPlanLimits } from '@/lib/stripe/config';
 import { toast } from 'sonner';
 
-// Componente principale
+// Main component
 export default function UsageLimitsNotifier() {
   const router = useRouter();
   const { subscription } = useSubscription();
-  const [usageData, setUsageData] = useState(null);
+  const [usageData, setUsageData] = useState<{
+    storage: number;
+    aiRequests: number;
+    workspaces: number;
+  } | null>(null);
   const [showWarning, setShowWarning] = useState(false);
-  const [dismissedAlerts, setDismissedAlerts] = useState({});
+  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
   const [showDetailedView, setShowDetailedView] = useState(false);
   
-  // Fetch dei dati di utilizzo
+  // Fetch usage data
   useEffect(() => {
     const fetchUsageData = async () => {
       if (subscription.isPremium) return;
@@ -26,28 +30,28 @@ export default function UsageLimitsNotifier() {
           const data = await response.json();
           setUsageData(data);
           
-          // Controlla se l'utente sta raggiungendo i limiti
+          // Check if user is reaching limits
           checkUsageLimits(data);
         }
       } catch (error) {
-        console.error('Errore nel recupero dei dati di utilizzo:', error);
+        console.error('Error retrieving usage data:', error);
       }
     };
     
     fetchUsageData();
     
-    // Poll ogni 5 minuti per aggiornare i dati
+    // Poll every 5 minutes to update data
     const interval = setInterval(fetchUsageData, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [subscription.isPremium]);
   
-  // Controlla se l'utente sta raggiungendo i limiti
-  const checkUsageLimits = (data) => {
+  // Check if user is reaching limits
+  const checkUsageLimits = (data: { storage: number; aiRequests: number; workspaces: number; } | null) => {
     if (!data) return;
     
     const planLimits = getPlanLimits(subscription.plan);
     
-    // Verifica se qualsiasi risorsa ha superato la soglia dell'80%
+    // Check if any resource has exceeded 80% threshold
     const storagePercentage = (data.storage / planLimits.storage) * 100;
     const aiRequestsPercentage = (data.aiRequests / planLimits.aiRequests) * 100;
     const workspacesPercentage = planLimits.workspaces > 0 
@@ -64,48 +68,48 @@ export default function UsageLimitsNotifier() {
     }
   };
   
-  // Gestisce la chiusura delle notifiche
-  const handleDismiss = (resourceType) => {
+  // Handle notification dismissal
+  const handleDismiss = (resourceType: string) => {
     setDismissedAlerts({
       ...dismissedAlerts,
       [resourceType]: true
     });
     
-    // Se tutte le notifiche sono state chiuse, nascondi il pannello di avviso
+    // If all notifications have been closed, hide the warning panel
     if (Object.keys(dismissedAlerts).length >= 2) {
       setShowWarning(false);
     }
   };
   
-  // Reimposta le notifiche chiuse dopo un po' di tempo
+  // Reset dismissed notifications after some time
   useEffect(() => {
     if (Object.keys(dismissedAlerts).length > 0) {
       const timeout = setTimeout(() => {
         setDismissedAlerts({});
-      }, 24 * 60 * 60 * 1000); // 24 ore
+      }, 24 * 60 * 60 * 1000); // 24 hours
       
       return () => clearTimeout(timeout);
     }
   }, [dismissedAlerts]);
   
-  // Mostra un toast all'avvicinarsi del limite
+  // Show a toast when approaching the limit
   useEffect(() => {
     if (usageData && !subscription.isPremium) {
       const planLimits = getPlanLimits(subscription.plan);
       
-      // Controlla solo le richieste AI (per non essere troppo invadenti)
+      // Only check AI requests (to avoid being too intrusive)
       const aiRequestsPercentage = (usageData.aiRequests / planLimits.aiRequests) * 100;
       
       if (aiRequestsPercentage >= 90 && !dismissedAlerts['aiRequests']) {
         toast.warning(
           <div className="flex flex-col">
-            <strong>Stai per raggiungere il limite di richieste AI</strong>
-            <span className="text-sm">Hai utilizzato il 90% del limite giornaliero</span>
+            <strong>You are about to reach the AI request limit</strong>
+            <span className="text-sm">You have used 90% of your daily limit</span>
             <button 
               className="mt-2 text-xs bg-primary hover:bg-primary-dark py-1 px-2 rounded self-start"
               onClick={() => router.push('/dashboard/subscription')}
             >
-              Passa a Premium
+              Upgrade to Premium
             </button>
           </div>,
           {
@@ -114,14 +118,14 @@ export default function UsageLimitsNotifier() {
         );
       }
     }
-  }, [usageData, subscription.isPremium]);
+  }, [usageData, subscription.isPremium, dismissedAlerts, router]);
   
-  // Se l'utente ha un abbonamento premium o non ci sono dati, non mostrare nulla
+  // If user has premium subscription or no data, show nothing
   if (subscription.isPremium || !usageData || !showWarning) {
     return null;
   }
   
-  // Calcola le percentuali di utilizzo
+  // Calculate usage percentages
   const planLimits = getPlanLimits(subscription.plan);
   const storagePercentage = Math.min(100, (usageData.storage / planLimits.storage) * 100);
   const aiRequestsPercentage = Math.min(100, (usageData.aiRequests / planLimits.aiRequests) * 100);
@@ -129,17 +133,17 @@ export default function UsageLimitsNotifier() {
     ? Math.min(100, (usageData.workspaces / planLimits.workspaces) * 100)
     : 0;
   
-  // Determina quali risorse stanno raggiungendo i limiti
+  // Determine which resources are reaching limits
   const isStorageNearLimit = storagePercentage >= 80 && !dismissedAlerts['storage'];
   const isAiRequestsNearLimit = aiRequestsPercentage >= 80 && !dismissedAlerts['aiRequests'];
   const isWorkspacesNearLimit = workspacesPercentage >= 80 && !dismissedAlerts['workspaces'];
   
-  // Se tutti gli avvisi sono stati chiusi, non mostrare nulla
+  // If all alerts have been dismissed, show nothing
   if (!isStorageNearLimit && !isAiRequestsNearLimit && !isWorkspacesNearLimit) {
     return null;
   }
   
-  // Versione compatta (icona flottante)
+  // Compact version (floating icon)
   if (!showDetailedView) {
     return (
       <motion.div
@@ -161,7 +165,7 @@ export default function UsageLimitsNotifier() {
     );
   }
   
-  // Versione dettagliata (pannello di avviso)
+  // Detailed version (warning panel)
   return (
     <AnimatePresence>
       <motion.div
@@ -174,7 +178,7 @@ export default function UsageLimitsNotifier() {
           <div className="bg-gradient-to-r from-amber-600/80 to-amber-500/80 px-4 py-3 flex items-center justify-between">
             <h3 className="font-medium flex items-center gap-2">
               <FiAlertCircle />
-              <span>Limiti piano Free</span>
+              <span>Free Plan Limits</span>
             </h3>
             <button 
               className="p-1 rounded hover:bg-white/10"
@@ -187,7 +191,7 @@ export default function UsageLimitsNotifier() {
           <div className="p-4">
             {isStorageNearLimit && (
               <UsageLimitWarning
-                title="Spazio di archiviazione"
+                title="Storage Space"
                 icon={<FiBarChart2 />}
                 percentage={storagePercentage}
                 usedValue={`${usageData.storage.toFixed(1)} GB`}
@@ -198,7 +202,7 @@ export default function UsageLimitsNotifier() {
             
             {isAiRequestsNearLimit && (
               <UsageLimitWarning
-                title="Richieste AI giornaliere"
+                title="Daily AI Requests"
                 icon={<FiCpu />}
                 percentage={aiRequestsPercentage}
                 usedValue={usageData.aiRequests}
@@ -209,7 +213,7 @@ export default function UsageLimitsNotifier() {
             
             {isWorkspacesNearLimit && planLimits.workspaces > 0 && (
               <UsageLimitWarning
-                title="Workspace"
+                title="Workspaces"
                 icon={<FiBarChart2 />}
                 percentage={workspacesPercentage}
                 usedValue={usageData.workspaces}
@@ -224,10 +228,10 @@ export default function UsageLimitsNotifier() {
                 onClick={() => router.push('/dashboard/subscription')}
               >
                 <FiArrowUp size={16} />
-                <span>Passa a Premium</span>
+                <span>Upgrade to Premium</span>
               </button>
               <p className="text-xs text-center mt-2 text-white/60">
-                Rimuovi tutti i limiti e sblocca funzionalità avanzate
+                Remove all limits and unlock advanced features
               </p>
             </div>
           </div>
@@ -237,10 +241,19 @@ export default function UsageLimitsNotifier() {
   );
 }
 
-// Componente per mostrare un singolo avviso di limite
-function UsageLimitWarning({ title, icon, percentage, usedValue, totalValue, onDismiss }) {
-  // Determina il colore in base alla percentuale
-  const getColor = (percent) => {
+// Component to display a single limit warning
+interface UsageLimitWarningProps {
+  title: string;
+  icon: React.ReactNode;
+  percentage: number;
+  usedValue: string | number;
+  totalValue: string | number;
+  onDismiss: () => void;
+}
+
+function UsageLimitWarning({ title, icon, percentage, usedValue, totalValue, onDismiss }: UsageLimitWarningProps) {
+  // Determine color based on percentage
+  const getColor = (percent: number) => {
     if (percent >= 95) return 'bg-red-500';
     if (percent >= 80) return 'bg-amber-500';
     return 'bg-blue-500';
@@ -269,8 +282,8 @@ function UsageLimitWarning({ title, icon, percentage, usedValue, totalValue, onD
       </div>
       
       <div className="flex justify-between text-xs text-white/60">
-        <span>{usedValue} utilizzati</span>
-        <span>Limite: {totalValue}</span>
+        <span>{usedValue} used</span>
+        <span>Limit: {totalValue}</span>
       </div>
     </div>
   );
