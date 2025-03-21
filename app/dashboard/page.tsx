@@ -16,7 +16,7 @@ import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
 import Link from 'next/link'
 import router from 'next/router'
 import UserMenuPortal from '@/components/user/UserMenuPortal'
-
+import UsageStats from '@/components/dashboard/UsageStats';
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
@@ -252,6 +252,11 @@ export default function Dashboard() {
       transition={{ duration: 0.5, delay: 0.6 }}
     >
       <Workspace />
+
+      <div className="absolute top-4 right-4 w-64 glass-panel rounded-lg shadow-lg">
+    <UsageStats />
+  </div>
+      
     </motion.div>
   </motion.div>
         

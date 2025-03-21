@@ -61,7 +61,7 @@ export default function AIAssistant() {
     
     try {
       // 1. Analizza il comando dell'utente
-      const parsedCommand = await parseUserCommand(text)
+      const parsedCommand = await parseUserCommand(text, session?.user?.id || '')
       
       // 2. Esegui il comando (se valido) o rispondi alla domanda
       let response: string
@@ -79,7 +79,7 @@ export default function AIAssistant() {
         }
       } else {
         // Se l'utente non è autenticato, non può eseguire comandi sul sistema
-        response = await answerQuestion(text)
+        response = await answerQuestion(text, session?.user?.id || '')
       }
       
       // Aggiunge la risposta dell'assistente

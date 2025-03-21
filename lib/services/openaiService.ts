@@ -3,6 +3,7 @@ import OpenAI from 'openai';
 import { PanelType, useWorkspaceStore } from '@/lib/store/workspaceStore';
 import { toast } from 'sonner';
 import { FileStorageService } from './fileStorage';
+import { prisma } from '../auth/prisma-adapter';
 
 // Definisce la tipologia di comandi che l'AI può eseguire
 type CommandType = 
@@ -44,10 +45,30 @@ const getOpenAIClient = (): OpenAI => {
   return openaiInstance;
 };
 
+async function logAIRequest(userId: string, type: string, tokenCount: number, successful: boolean) {
+  try {
+    await fetch('/api/ai/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        type,
+        tokenCount,
+        successful
+      }),
+    });
+  } catch (error) {
+    console.error("Errore nel logging della richiesta AI:", error);
+  }
+}
+
+
 /**
  * Analizza il comando dell'utente e determina l'azione da eseguire
  */
-export async function parseUserCommand(userInput: string): Promise<ParsedCommand> {
+export async function parseUserCommand(userInput: string, userId: string): Promise<ParsedCommand> {
   try {
     const openai = getOpenAIClient();
     
@@ -88,6 +109,13 @@ export async function parseUserCommand(userInput: string): Promise<ParsedCommand
       ],
       temperature: 0.2,
     });
+
+    await logAIRequest(
+      userId, 
+      "chat_completion", 
+      completion.usage?.total_tokens || 0, 
+      true
+    );
     
     const responseText = completion.choices[0].message.content || '{"type": "UNKNOWN", "params": {}, "originalText": "' + userInput + '"}';
     
@@ -107,6 +135,7 @@ export async function parseUserCommand(userInput: string): Promise<ParsedCommand
     }
   } catch (error) {
     console.error("Errore nella chiamata all'API OpenAI:", error);
+    await logAIRequest(userId, "chat_completion", 0, false);
     return {
       type: "UNKNOWN",
       params: {},
@@ -146,11 +175,11 @@ export async function executeCommand(command: ParsedCommand, userId: string): Pr
         return await getSystemInfo(command.params.infoType);
       
       case "ANSWER_QUESTION":
-        return await answerQuestion(command.originalText);
+        return await answerQuestion(command.originalText, userId);
       
       case "UNKNOWN":
       default:
-        return await answerQuestion(command.originalText);
+        return await answerQuestion(command.originalText, userId);
     }
   } catch (error: any) {
     console.error("Errore nell'esecuzione del comando:", error);
@@ -161,7 +190,7 @@ export async function executeCommand(command: ParsedCommand, userId: string): Pr
 /**
  * Genera una risposta generica a una domanda dell'utente
  */
-export async function answerQuestion(question: string): Promise<string> {
+export async function answerQuestion(question: string, userId: string): Promise<string> {
   try {
     const openai = getOpenAIClient();
     
@@ -181,11 +210,20 @@ export async function answerQuestion(question: string): Promise<string> {
       temperature: 0.7,
       max_tokens: 300
     });
+
+    await logAIRequest(
+      userId, 
+      "chat_completion", 
+      completion.usage?.total_tokens || 0, 
+      true
+    );
     
     return completion.choices[0].message.content || "Mi dispiace, non sono riuscito a generare una risposta.";
   } catch (error) {
     console.error("Errore nella chiamata all'API OpenAI:", error);
+    await logAIRequest(userId, "chat_completion", 0, false);
     return "Si è verificato un errore durante l'elaborazione della tua domanda.";
+
   }
 }
 

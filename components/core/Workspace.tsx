@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { FiPlus, FiGrid, FiBriefcase, FiCode, FiFolder, FiTerminal, FiFileText } from 'react-icons/fi'
 import Panel from './Panel'
 import { useWorkspaceStore, PanelType } from '@/lib/store/workspaceStore'
+import { useSubscription } from '@/hooks/useSubscription';
+import { toast } from 'sonner';
 
 export default function Workspace() {
   const { panels, addPanel } = useWorkspaceStore()
   // Aggiungi un ref per tracciare l'inizializzazione
   const isInitialized = useRef(false)
-  
+  const { subscription } = useSubscription();
   // Colori moderni 2025 (stessi della dashboard)
   const colors = {
     primary: "#A47864", // Mocha Mousse (Pantone 2025)
@@ -42,6 +44,10 @@ export default function Workspace() {
 
   // Crea un nuovo pannello
   const handleCreatePanel = (type: PanelType) => {
+    if (subscription.plan === 'FREE' && panels.length >= 3) {
+      toast.error('Piano Free limitato a 3 pannelli. Passa a Premium per pannelli illimitati.');
+      return;
+    }
     const panelDefaults = {
       browser: {
         title: 'Browser',

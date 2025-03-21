@@ -1,7 +1,9 @@
 // src/lib/store/workspaceStore.ts
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-
+import { hasAccessToFeature } from '@/lib/services/authorizationService';
+import { useSubscription } from '@/hooks/useSubscription';
+import { toast } from 'sonner';
 // Tipi di pannello disponibili
 export type PanelType = 'browser' | 'editor' | 'fileManager' | 'terminal' | 'notes' | 'dashboard'
 
@@ -44,7 +46,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       activePanel: null,
       
       addPanel: (panel) => {
-        const id = `panel-${Date.now()}`
+        const id = `panel-${Date.now()}`;
         // Ottieni il massimo zIndex corrente
         const currentPanels = get().panels;
         const maxZIndex = currentPanels.length ? Math.max(...currentPanels.map(p => p.zIndex)) : 0;

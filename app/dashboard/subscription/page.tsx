@@ -10,7 +10,7 @@ import Link from 'next/link'
 import EnhancedPlanComparison from '@/components/subscription/EnhancedPlanComparision'
 import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
 import { redirectToCustomerPortal } from '@/lib/stripe/client';
-
+import { useSubscription } from '@/hooks/useSubscription'; 
 // All'interno del tuo componente
 const handleManageSubscription = async () => {
   try {
@@ -32,6 +32,7 @@ export default function SubscriptionPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { status } = useSession()
+  const { subscription } = useSubscription();
 
   // Colori moderni 2025 (stessi di HomeClient)
   const colors = {
@@ -113,19 +114,30 @@ export default function SubscriptionPage() {
               <h2 className="text-xl font-bold mb-2">Il tuo piano attuale</h2>
               <div className="flex items-center space-x-2">
                 <FiCheckCircle className="text-green-400" />
-                <span className="font-semibold text-lg">Piano Free</span>
+                <span className="font-semibold text-lg">
+                  {/* Usa dinamicamente il tipo di abbonamento */}
+                  Piano {subscription.plan === 'PREMIUM' ? 'Premium' : 
+                        subscription.plan === 'TEAM' ? 'Team' : 'Free'}
+                </span>
               </div>
               <p className="mt-2 text-sm" style={{ color: colors.textMuted }}>
-                Stai utilizzando il piano gratuito con funzionalità limitate.
+                {/* Testo condizionale in base al piano */}
+                {subscription.isActive && (subscription.plan === 'PREMIUM' || subscription.plan === 'TEAM') ?
+                  `Stai utilizzando il piano ${subscription.plan.toLowerCase()} con tutte le funzionalità.` :
+                  'Stai utilizzando il piano gratuito con funzionalità limitate.'}
               </p>
             </div>
             
-            <button
-              className="mt-4 md:mt-0 px-6 py-3 rounded-lg font-medium"
-              style={{ background: colors.accent }}
-            >
-              Passa a Premium
-            </button>
+            {/* Mostra il pulsante solo se non è un piano premium attivo */}
+            {(!subscription.isActive || subscription.plan === 'FREE') && (
+              <button
+                className="mt-4 md:mt-0 px-6 py-3 rounded-lg font-medium"
+                style={{ background: colors.accent }}
+                onClick={() => router.push('#pricing')}
+              >
+                Passa a Premium
+              </button>
+            )}
           </div>
         </div>
         

@@ -3,52 +3,69 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/auth-options";
 import { prisma } from "@/lib/auth/prisma-adapter";
+import { getPlanLimits } from "@/lib/stripe/config";
 
 export async function GET(request: NextRequest) {
   try {
-    // Verifica che l'utente sia autenticato
+    // Verifica autenticazione
     const session = await getServerSession(authOptions);
-    
     if (!session || !session.user?.id) {
-      return NextResponse.json(
-        { message: "Non autorizzato" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
     }
-    
-    // In una implementazione reale, questi dati verrebbero calcolati in base all'uso effettivo
-    // Qui simuliamo i dati di utilizzo
-    
-    // Ottieni il conteggio effettivo dei workspace
-    const workspaces = await prisma.workspace.count({
-      where: { userId: session.user.id },
-    });
-    
-    // Calcola la dimensione totale dei file (in una implementazione reale)
+
+    // Calcola lo spazio di archiviazione utilizzato dall'utente
     const files = await prisma.file.findMany({
-      where: { userId: session.user.id },
-      select: { size: true },
+      where: { 
+        userId: session.user.id,
+        type: { not: 'folder' } // Escludiamo le cartelle dal calcolo
+      },
+      select: { size: true }
     });
     
-    const storageUsed = files.reduce((total, file) => total + file.size, 0) / (1024 * 1024 * 1024); // Converti da bytes a GB
+    // Calcola la dimensione totale in bytes
+    const totalSizeInBytes = files.reduce((total, file) => total + (file.size || 0), 0);
+    // Converti in GB
+    const storageUsedGB = totalSizeInBytes / (1024 * 1024 * 1024);
     
-    // Per le richieste AI, in un'implementazione reale terremmo traccia di queste nel database
-    // Qui simuliamo alcuni dati casuali
-    const aiRequests = Math.floor(Math.random() * 30) + 5;
+    // Conta i workspace dell'utente
+    const workspaces = await prisma.workspace.count({
+      where: { userId: session.user.id }
+    });
     
-    return NextResponse.json(
-      {
-        storage: parseFloat(storageUsed.toFixed(1)),
-        aiRequests,
-        workspaces,
-      },
-      { status: 200 }
-    );
+    // Ottieni il conteggio delle richieste AI dalle statistiche
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const aiRequestsCount = await prisma.aIRequestLog.count({
+      where: {
+        userId: session.user.id,
+        createdAt: {
+          gte: today
+        }
+      }
+    });
+    
+    // Ottieni i limiti del piano
+    const userPlan = session.user.plan as 'FREE' | 'PREMIUM' | 'TEAM';
+    const planLimits = getPlanLimits(userPlan);
+    
+    return NextResponse.json({
+      storage: parseFloat(storageUsedGB.toFixed(2)),
+      aiRequests: aiRequestsCount,
+      workspaces: workspaces,
+      
+      storageLimit: planLimits.storage,
+      aiRequestsLimit: planLimits.aiRequests,
+      workspacesLimit: planLimits.workspaces,
+      
+      storagePercentage: Math.min(100, (storageUsedGB / planLimits.storage) * 100),
+      aiRequestsPercentage: Math.min(100, (aiRequestsCount / planLimits.aiRequests) * 100),
+      workspacesPercentage: planLimits.workspaces > 0 
+        ? Math.min(100, (workspaces / planLimits.workspaces) * 100)
+        : 0
+    });
   } catch (error) {
-    console.error("Errore nel recupero dei dati di utilizzo:", error);
-    return NextResponse.json(
-      { message: "Si è verificato un errore durante il recupero dei dati di utilizzo" },
-      { status: 500 }
-    );
+    console.error('Errore nel calcolo dell\'utilizzo:', error);
+    return NextResponse.json({ error: "Errore interno" }, { status: 500 });
   }
 }

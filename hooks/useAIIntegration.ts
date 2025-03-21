@@ -26,7 +26,7 @@ export function useAIIntegration() {
     
     try {
       // 1. Analizza il comando dell'utente
-      const parsedCommand = await parseUserCommand(userInput);
+      const parsedCommand = await parseUserCommand(userInput, session?.user?.id || '');
       setLastCommand(parsedCommand);
       
       // 2. Esegui il comando per ottenere una risposta testuale

@@ -67,6 +67,7 @@ export async function processCodeRequest(request: CodeRequest): Promise<CodeResp
       temperature: 0.3,
     });
     
+    
     const responseText = completion.choices[0].message.content || '';
     
     // Estrai il codice e la spiegazione dalla risposta
@@ -78,6 +79,24 @@ export async function processCodeRequest(request: CodeRequest): Promise<CodeResp
   }
 }
 
+async function logAIRequest(userId: string, type: string, tokenCount: number, successful: boolean) {
+  try {
+    await fetch('/api/ai/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        userId,
+        type,
+        tokenCount,
+        successful
+      }),
+    });
+  } catch (error) {
+    console.error("Errore nel logging della richiesta AI:", error);
+  }
+}
 /**
  * Genera un prompt di sistema specifico in base al tipo di richiesta
  */

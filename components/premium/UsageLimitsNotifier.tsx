@@ -22,19 +22,36 @@ export default function UsageLimitsNotifier() {
   // Fetch usage data
   useEffect(() => {
     const fetchUsageData = async () => {
-      if (subscription.isPremium) return;
-      
       try {
         const response = await fetch('/api/user/usage');
-        if (response.ok) {
-          const data = await response.json();
-          setUsageData(data);
-          
-          // Check if user is reaching limits
-          checkUsageLimits(data);
+        if (!response.ok) {
+          throw new Error(`Errore nella richiesta: ${response.status}`);
         }
+        
+        const data = await response.json();
+        console.log('Dati di utilizzo ricevuti:', data); // Per debug
+        
+        // Imposta i dati di utilizzo
+        setUsageData({
+          storage: data.storage || 0.1,
+          aiRequests: data.aiRequests || 0,
+          workspaces: data.workspaces || 0,
+        });
+        
+        // Verifica i limiti
+        checkUsageLimits({
+          storage: data.storage || 0.1,
+          aiRequests: data.aiRequests || 0,
+          workspaces: data.workspaces || 0
+        });
       } catch (error) {
-        console.error('Error retrieving usage data:', error);
+        console.error('Errore nel recupero dei dati di utilizzo:', error);
+        // Usa valori di esempio solo in caso di errore
+        setUsageData({
+          storage: 0.5,
+          aiRequests: 15,
+          workspaces: 1
+        });
       }
     };
     

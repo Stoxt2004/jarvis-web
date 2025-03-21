@@ -77,6 +77,8 @@ model User {
   files         File[]
 
   Subscription Subscription?
+
+  AIRequestLog AIRequestLog[]
 }
 
 model VerificationToken {
@@ -131,4 +133,15 @@ model File {
   children    File[]    @relation("FileToFile")
   isPublic    Boolean   @default(false)
   content     String?   @db.Text
+}
+
+model AIRequestLog {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // tipo di richiesta: "generate", "chat", ecc.
+  tokenCount  Int      @default(0)
+  successful  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
