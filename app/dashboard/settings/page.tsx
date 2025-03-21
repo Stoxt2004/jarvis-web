@@ -3,13 +3,12 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { FiArrowLeft, FiSave, FiMonitor, FiMoon, FiSun, FiGlobe, FiClock, FiVolume2 } from 'react-icons/fi'
+import { FiArrowLeft, FiSave, FiGlobe, FiClock, FiVolume2 } from 'react-icons/fi'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
 // Tipo per le preferenze utente
 interface UserPreferences {
-  theme: 'dark' | 'light' | 'system'
   language: string
   timezone: string
   notifications: {
@@ -28,7 +27,6 @@ export default function SettingsPage() {
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(false)
   const [preferences, setPreferences] = useState<UserPreferences>({
-    theme: 'dark',
     language: 'it',
     timezone: 'Europe/Rome',
     notifications: {
@@ -42,6 +40,19 @@ export default function SettingsPage() {
       personality: 'friendly',
     },
   })
+
+  // Colori moderni 2025 (stessi di HomeClient)
+  const colors = {
+    primary: "#A47864", // Mocha Mousse (Pantone 2025)
+    secondary: "#A78BFA", // Digital Lavender
+    accent: "#4CAF50", // Verdant Green
+    navy: "#101585", // Navy Blue
+    rose: "#D58D8D", // Muted Rose
+    background: "#0F0F1A", // Dark background
+    surface: "#1A1A2E", // Slightly lighter surface
+    text: "#FFFFFF",
+    textMuted: "rgba(255, 255, 255, 0.7)"
+  }
 
   // Carica le preferenze dell'utente dal backend
   useEffect(() => {
@@ -58,14 +69,13 @@ export default function SettingsPage() {
         }
       }
     }
-
+    
     loadPreferences()
   }, [session])
 
   // Gestisce il salvataggio delle preferenze
   const handleSavePreferences = async () => {
     setIsLoading(true)
-    
     try {
       const response = await fetch('/api/user/preferences', {
         method: 'PUT',
@@ -90,214 +100,209 @@ export default function SettingsPage() {
 
   if (status === 'loading') {
     return (
-      <div className="h-full w-full flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center h-screen" style={{ background: colors.background }}>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: colors.primary }}></div>
       </div>
     )
   }
 
   return (
-    <div className="h-full w-full p-6 overflow-y-auto">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen" style={{ background: colors.background, color: colors.text }}>
+      <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Intestazione */}
-        <div className="mb-6 flex items-center justify-between">
-          <div className="flex items-center">
-            <Link
-              href="/dashboard"
-              className="mr-4 p-2 rounded-full hover:bg-white/10"
-            >
-              <FiArrowLeft />
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
+              <FiArrowLeft className="w-5 h-5" style={{ color: colors.textMuted }} />
             </Link>
             <h1 className="text-2xl font-bold">Impostazioni</h1>
           </div>
           
           <button
             onClick={handleSavePreferences}
-            className="px-4 py-2 rounded-md bg-primary hover:bg-primary-dark transition-colors flex items-center gap-2"
             disabled={isLoading}
+            className="flex items-center space-x-1 px-4 py-2 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+            style={{ background: colors.accent }}
           >
             {isLoading ? (
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
             ) : (
-              <FiSave size={16} />
+              <FiSave className="w-4 h-4" />
             )}
-            Salva impostazioni
+            <span>Salva impostazioni</span>
           </button>
         </div>
         
-        {/* Sezione Interfaccia */}
-        <div className="glass-panel p-6 rounded-lg mb-6">
-          <h2 className="text-lg font-medium mb-4">Interfaccia</h2>
-          
-          <div className="space-y-6">
-            {/* Tema */}
-            <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
-                Tema
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <ThemeOption
-                  icon={<FiSun />}
-                  label="Chiaro"
-                  selected={preferences.theme === 'light'}
-                  onClick={() => setPreferences({ ...preferences, theme: 'light' })}
-                />
-                <ThemeOption
-                  icon={<FiMoon />}
-                  label="Scuro"
-                  selected={preferences.theme === 'dark'}
-                  onClick={() => setPreferences({ ...preferences, theme: 'dark' })}
-                />
-                <ThemeOption
-                  icon={<FiMonitor />}
-                  label="Sistema"
-                  selected={preferences.theme === 'system'}
-                  onClick={() => setPreferences({ ...preferences, theme: 'system' })}
-                />
-              </div>
-            </div>
+        {/* Contenuto principale */}
+        <div className="space-y-8">
+          {/* Sezione Interfaccia */}
+          <div className="rounded-xl p-6" style={{ background: colors.surface }}>
+            <h2 className="text-xl font-semibold mb-4">Interfaccia</h2>
             
             {/* Lingua */}
-            <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2 flex items-center">
+                <FiGlobe className="mr-2" />
                 Lingua
               </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-white/50">
-                  <FiGlobe />
-                </span>
-                <select
-                  className="w-full bg-surface-dark rounded-md py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-primary border border-white/10"
-                  value={preferences.language}
-                  onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                >
-                  <option value="it">Italiano</option>
-                  <option value="en">English</option>
-                  <option value="es">Español</option>
-                  <option value="fr">Français</option>
-                  <option value="de">Deutsch</option>
-                </select>
-              </div>
+              <select 
+                className="w-full p-2 rounded-md"
+                value={preferences.language}
+                onChange={(e) => 
+                  setPreferences({ ...preferences, language: e.target.value })}
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.05)', 
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  color: colors.text
+                }}
+              >
+                <option value="it">Italiano</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+              </select>
             </div>
             
             {/* Fuso orario */}
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
+              <label className="block text-sm font-medium mb-2 flex items-center">
+                <FiClock className="mr-2" />
                 Fuso orario
               </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-white/50">
-                  <FiClock />
-                </span>
-                <select
-                  className="w-full bg-surface-dark rounded-md py-2 pl-10 pr-4 outline-none focus:ring-1 focus:ring-primary border border-white/10"
-                  value={preferences.timezone}
-                  onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                >
-                  <option value="Europe/Rome">Europe/Rome (UTC+1/+2)</option>
-                  <option value="Europe/London">Europe/London (UTC+0/+1)</option>
-                  <option value="America/New_York">America/New_York (UTC-5/-4)</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles (UTC-8/-7)</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
-                </select>
-              </div>
+              <select 
+                className="w-full p-2 rounded-md"
+                value={preferences.timezone}
+                onChange={(e) => 
+                  setPreferences({ ...preferences, timezone: e.target.value })}
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.05)', 
+                  borderColor: 'rgba(255, 255, 255, 0.1)',
+                  color: colors.text
+                }}
+              >
+                <option value="Europe/Rome">Europe/Rome (UTC+1/+2)</option>
+                <option value="Europe/London">Europe/London (UTC+0/+1)</option>
+                <option value="America/New_York">America/New_York (UTC-5/-4)</option>
+                <option value="America/Los_Angeles">America/Los_Angeles (UTC-8/-7)</option>
+                <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
+              </select>
             </div>
           </div>
-        </div>
-        
-        {/* Sezione Notifiche */}
-        <div className="glass-panel p-6 rounded-lg mb-6">
-          <h2 className="text-lg font-medium mb-4">Notifiche</h2>
           
-          <div className="space-y-4">
-            <ToggleOption
-              label="Notifiche email"
-              description="Ricevi aggiornamenti importanti via email"
-              checked={preferences.notifications.email}
-              onChange={(checked) => setPreferences({
-                ...preferences,
-                notifications: { ...preferences.notifications, email: checked }
-              })}
-            />
+          {/* Sezione Notifiche */}
+          <div className="rounded-xl p-6" style={{ background: colors.surface }}>
+            <h2 className="text-xl font-semibold mb-4">Notifiche</h2>
             
-            <ToggleOption
-              label="Notifiche browser"
-              description="Mostra notifiche nel browser"
-              checked={preferences.notifications.browser}
-              onChange={(checked) => setPreferences({
-                ...preferences,
-                notifications: { ...preferences.notifications, browser: checked }
-              })}
-            />
-            
-            <ToggleOption
-              label="Suoni di notifica"
-              description="Riproduci suoni per le notifiche"
-              checked={preferences.notifications.sound}
-              onChange={(checked) => setPreferences({
-                ...preferences,
-                notifications: { ...preferences.notifications, sound: checked }
-              })}
-            />
+            <div className="space-y-4">
+              <ToggleOption 
+                label="Notifiche email"
+                description="Ricevi aggiornamenti importanti via email"
+                checked={preferences.notifications.email}
+                onChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    notifications: { ...preferences.notifications, email: checked }
+                  })}
+                colors={colors}
+              />
+              
+              <ToggleOption 
+                label="Notifiche browser"
+                description="Ricevi notifiche nel browser"
+                checked={preferences.notifications.browser}
+                onChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    notifications: { ...preferences.notifications, browser: checked }
+                  })}
+                colors={colors}
+              />
+              
+              <ToggleOption 
+                label="Suoni di notifica"
+                description="Riproduci suoni per le notifiche"
+                checked={preferences.notifications.sound}
+                onChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    notifications: { ...preferences.notifications, sound: checked }
+                  })}
+                colors={colors}
+              />
+            </div>
           </div>
-        </div>
-        
-        {/* Sezione Assistente AI */}
-        <div className="glass-panel p-6 rounded-lg">
-          <h2 className="text-lg font-medium mb-4">Assistente AI</h2>
           
-          <div className="space-y-4">
-            <ToggleOption
-              label="Comandi vocali"
-              description="Abilitare l'input vocale per l'assistente"
-              checked={preferences.aiAssistant.voiceEnabled}
-              onChange={(checked) => setPreferences({
-                ...preferences,
-                aiAssistant: { ...preferences.aiAssistant, voiceEnabled: checked }
-              })}
-            />
+          {/* Sezione Assistente AI */}
+          <div className="rounded-xl p-6" style={{ background: colors.surface }}>
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <FiVolume2 className="mr-2" />
+              Assistente AI
+            </h2>
             
-            <ToggleOption
-              label="Attivazione vocale"
-              description="Attiva l'assistente con comando vocale 'Hey Jarvis'"
-              checked={preferences.aiAssistant.voiceActivation}
-              onChange={(checked) => setPreferences({
-                ...preferences,
-                aiAssistant: { ...preferences.aiAssistant, voiceActivation: checked }
-              })}
-            />
+            <div className="space-y-4 mb-6">
+              <ToggleOption 
+                label="Assistente vocale"
+                description="Abilita l'interazione vocale con l'assistente AI"
+                checked={preferences.aiAssistant.voiceEnabled}
+                onChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    aiAssistant: { ...preferences.aiAssistant, voiceEnabled: checked }
+                  })}
+                colors={colors}
+              />
+              
+              <ToggleOption 
+                label="Attivazione vocale"
+                description="Attiva l'assistente con un comando vocale"
+                checked={preferences.aiAssistant.voiceActivation}
+                onChange={(checked) => 
+                  setPreferences({
+                    ...preferences,
+                    aiAssistant: { ...preferences.aiAssistant, voiceActivation: checked }
+                  })}
+                colors={colors}
+              />
+            </div>
             
             <div>
-              <label className="block text-sm font-medium text-white/70 mb-2">
-                Personalità dell'assistente
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <PersonalityOption
+              <label className="block text-sm font-medium mb-3">Personalità dell'assistente</label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <PersonalityOption 
                   label="Professionale"
-                  description="Risposte formali e dirette"
+                  description="Risposte formali e precise"
                   selected={preferences.aiAssistant.personality === 'professional'}
-                  onClick={() => setPreferences({
-                    ...preferences,
-                    aiAssistant: { ...preferences.aiAssistant, personality: 'professional' }
-                  })}
+                  onClick={() => 
+                    setPreferences({
+                      ...preferences,
+                      aiAssistant: { ...preferences.aiAssistant, personality: 'professional' }
+                    })}
+                  colors={colors}
                 />
-                <PersonalityOption
+                
+                <PersonalityOption 
                   label="Amichevole"
                   description="Tono conversazionale e cordiale"
                   selected={preferences.aiAssistant.personality === 'friendly'}
-                  onClick={() => setPreferences({
-                    ...preferences,
-                    aiAssistant: { ...preferences.aiAssistant, personality: 'friendly' }
-                  })}
+                  onClick={() => 
+                    setPreferences({
+                      ...preferences,
+                      aiAssistant: { ...preferences.aiAssistant, personality: 'friendly' }
+                    })}
+                  colors={colors}
                 />
-                <PersonalityOption
+                
+                <PersonalityOption 
                   label="Conciso"
                   description="Risposte brevi ed essenziali"
                   selected={preferences.aiAssistant.personality === 'concise'}
-                  onClick={() => setPreferences({
-                    ...preferences,
-                    aiAssistant: { ...preferences.aiAssistant, personality: 'concise' }
-                  })}
+                  onClick={() => 
+                    setPreferences({
+                      ...preferences,
+                      aiAssistant: { ...preferences.aiAssistant, personality: 'concise' }
+                    })}
+                  colors={colors}
                 />
               </div>
             </div>
@@ -308,57 +313,34 @@ export default function SettingsPage() {
   )
 }
 
-// Componente per opzione tema
-interface ThemeOptionProps {
-  icon: React.ReactNode
-  label: string
-  selected: boolean
-  onClick: () => void
-}
-
-function ThemeOption({ icon, label, selected, onClick }: ThemeOptionProps) {
-  return (
-    <button
-      className={`p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-colors ${
-        selected
-          ? 'bg-primary/20 border-primary'
-          : 'border-white/10 hover:bg-white/5'
-      }`}
-      onClick={onClick}
-    >
-      <div className={`text-2xl ${selected ? 'text-primary' : 'text-white/70'}`}>
-        {icon}
-      </div>
-      <span className={`text-sm ${selected ? 'text-primary' : 'text-white/70'}`}>
-        {label}
-      </span>
-    </button>
-  )
-}
-
 // Componente per opzione toggle
 interface ToggleOptionProps {
   label: string
   description: string
   checked: boolean
   onChange: (checked: boolean) => void
+  colors: any
 }
 
-function ToggleOption({ label, description, checked, onChange }: ToggleOptionProps) {
+function ToggleOption({ label, description, checked, onChange, colors }: ToggleOptionProps) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between">
       <div>
         <h3 className="font-medium">{label}</h3>
-        <p className="text-sm text-white/60">{description}</p>
+        <p className="text-sm" style={{ color: colors.textMuted }}>{description}</p>
       </div>
       <label className="relative inline-flex items-center cursor-pointer">
-        <input
-          type="checkbox"
+        <input 
+          type="checkbox" 
           className="sr-only peer"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
         />
-        <div className="w-11 h-6 bg-surface-light rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        <div className="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"
+          style={{ 
+            backgroundColor: checked ? colors.accent : 'rgba(255, 255, 255, 0.2)'
+          }}
+        ></div>
       </label>
     </div>
   )
@@ -370,20 +352,21 @@ interface PersonalityOptionProps {
   description: string
   selected: boolean
   onClick: () => void
+  colors: any
 }
 
-function PersonalityOption({ label, description, selected, onClick }: PersonalityOptionProps) {
+function PersonalityOption({ label, description, selected, onClick, colors }: PersonalityOptionProps) {
   return (
-    <button
-      className={`p-3 rounded-lg border text-left transition-colors ${
-        selected
-          ? 'bg-primary/20 border-primary'
-          : 'border-white/10 hover:bg-white/5'
-      }`}
+    <div 
+      className="p-3 rounded-lg cursor-pointer transition-all"
+      style={{ 
+        backgroundColor: selected ? colors.primary : 'rgba(255, 255, 255, 0.05)',
+        border: `1px solid ${selected ? colors.primary : 'rgba(255, 255, 255, 0.1)'}`,
+      }}
       onClick={onClick}
     >
-      <h3 className={`font-medium ${selected ? 'text-primary' : ''}`}>{label}</h3>
-      <p className="text-xs text-white/60 mt-1">{description}</p>
-    </button>
+      <h3 className="font-medium">{label}</h3>
+      <p className="text-sm" style={{ color: colors.textMuted }}>{description}</p>
+    </div>
   )
 }

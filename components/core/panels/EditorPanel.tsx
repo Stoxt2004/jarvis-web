@@ -2,12 +2,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from 'react'
-import { FiSave, FiPlay, FiCode, FiSettings, FiDownload, FiPlus, FiTrash2, FiUpload, 
-         FiCopy, FiClipboard, FiCheck, FiGitBranch, FiSearch, FiGitMerge, 
-         FiX} from 'react-icons/fi'
+import { FiSave, FiPlay, FiCode, FiSettings, FiDownload, FiPlus, FiTrash2, FiUpload,
+  FiCopy, FiClipboard, FiCheck, FiGitBranch, FiSearch, FiGitMerge, FiX, FiMessageSquare } from 'react-icons/fi'
 import { Panel, useWorkspaceStore } from '@/lib/store/workspaceStore'
 import { toast } from 'sonner'
-
+import CodeAssistant from '../../ai/CodeAssistant'
+import { executeCommand } from '@/lib/services/openaiService';
 
 interface EditorPanelProps {
   panel: Panel
@@ -31,11 +31,10 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   const { updatePanelContent } = useWorkspaceStore()
   
   // Stato per gestire file multipli (tabs)
-  const [fileTabs, setFileTabs] = useState<FileTab[]>(() => {
+  const [fileTabs, setFileTabs] = useState(() => {
     const initialContent = panel.content?.value || '// Scrivi il tuo codice qui\n';
     const initialLanguage = panel.content?.language || 'javascript';
     const initialFileName = panel.content?.fileName || 'untitled.js';
-    
     return [{
       id: 'file-' + Date.now(),
       name: initialFileName,
@@ -45,7 +44,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     }];
   });
   
-  const [activeFileId, setActiveFileId] = useState<string>(fileTabs[0].id);
+  const [activeFileId, setActiveFileId] = useState(fileTabs[0].id);
   const [showSettings, setShowSettings] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [tabSize, setTabSize] = useState(2);
@@ -57,7 +56,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [replaceText, setReplaceText] = useState('');
   const [showReplace, setShowReplace] = useState(false);
-  
+  const [showCodeAssistant, setShowCodeAssistant] = useState(false)  
   // Riferimenti
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const activeFile = fileTabs.find(tab => tab.id === activeFileId) || fileTabs[0];
@@ -88,382 +87,277 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       const timer = setTimeout(() => {
         handleSave();
       }, 2000);
-      
       return () => clearTimeout(timer);
     }
   }, [activeFile.content, autoSave, activeFile.isDirty]);
   
-  // Funzione per ottenere l'estensione dal nome del file
-  const getFileExtension = (filename: string): string => {
-    return filename.split('.').pop() || '';
-  };
-  
-  // Funzione per ottenere il linguaggio dall'estensione
-  const getLanguageFromExtension = (extension: string): string => {
-    const extensionMap: Record<string, string> = {
-      'js': 'javascript',
-      'jsx': 'javascript',
-      'ts': 'typescript',
-      'tsx': 'typescript',
-      'html': 'html',
-      'css': 'css',
-      'scss': 'scss',
-      'less': 'less',
-      'py': 'python',
-      'rb': 'ruby',
-      'php': 'php',
-      'go': 'go',
-      'java': 'java',
-      'c': 'c',
-      'cpp': 'cpp',
-      'cs': 'csharp',
-      'json': 'json',
-      'md': 'markdown',
-      'txt': 'plaintext',
-      'sh': 'bash',
-      'sql': 'sql',
-      'rs': 'rust',
-      'swift': 'swift',
-      'kt': 'kotlin',
-      'dart': 'dart',
-    };
-    
-    return extensionMap[extension.toLowerCase()] || 'plaintext';
-  };
-  
-  // Linguaggi supportati
-  const languages = [
-    { value: 'javascript', label: 'JavaScript', extension: 'js' },
-    { value: 'typescript', label: 'TypeScript', extension: 'ts' },
-    { value: 'html', label: 'HTML', extension: 'html' },
-    { value: 'css', label: 'CSS', extension: 'css' },
-    { value: 'python', label: 'Python', extension: 'py' },
-    { value: 'json', label: 'JSON', extension: 'json' },
-    { value: 'markdown', label: 'Markdown', extension: 'md' },
-    { value: 'sql', label: 'SQL', extension: 'sql' },
-    { value: 'php', label: 'PHP', extension: 'php' },
-    { value: 'java', label: 'Java', extension: 'java' },
-    { value: 'go', label: 'Go', extension: 'go' },
-    { value: 'rust', label: 'Rust', extension: 'rs' },
-    { value: 'ruby', label: 'Ruby', extension: 'rb' },
-    { value: 'csharp', label: 'C#', extension: 'cs' },
-    { value: 'bash', label: 'Bash', extension: 'sh' },
-  ];
-  
-  // Aggiorna il linguaggio e l'estensione del file quando cambia il linguaggio
-  const handleLanguageChange = (newLanguage: string) => {
-    // Trova l'estensione corrispondente al nuovo linguaggio
-    const language = languages.find(lang => lang.value === newLanguage);
-    const extension = language?.extension || 'txt';
-    
-    // Aggiorna il nome del file con la nuova estensione
-    const currentName = activeFile.name;
-    const baseName = currentName.includes('.') 
-      ? currentName.substring(0, currentName.lastIndexOf('.')) 
-      : currentName;
-    const newName = `${baseName}.${extension}`;
-    
-    // Aggiorna il tab attivo
-    setFileTabs(prev => 
-      prev.map(tab => 
-        tab.id === activeFileId 
-          ? { ...tab, language: newLanguage, name: newName, isDirty: true } 
-          : tab
-      )
-    );
-  };
-  
-  // Gestisce il salvataggio del codice
-  const handleSave = () => {
-    // Aggiorna il contenuto del pannello
-    updatePanelContent(panel.id, {
-      ...panel.content,
-      value: activeFile.content,
-      fileName: activeFile.name,
-      language: activeFile.language
-    });
-    
-    // Aggiorna lo stato dirty del file
-    setFileTabs(prev => 
-      prev.map(tab => 
-        tab.id === activeFileId 
-          ? { ...tab, isDirty: false } 
-          : tab
-      )
-    );
-    
-    // Mostra una notifica
-    toast.success(`File ${activeFile.name} salvato!`);
-    
-    // Simula il salvataggio in un filesystem
-    localStorage.setItem(`jarvis-editor-file-${activeFile.id}`, activeFile.content);
-  };
-  
-  // Funzione per eseguire il codice in base al linguaggio
   const handleRun = () => {
-    toast.info(`Esecuzione di ${activeFile.name} in corso...`);
-    
-    // Salva prima di eseguire
-    if (activeFile.isDirty) {
-      handleSave();
-    }
-    
-    // Simula un ritardo di esecuzione
-    setTimeout(() => {
-      try {
-        switch (activeFile.language) {
-          case 'javascript':
-            // Esegue il codice JavaScript in un contesto sicuro
-            try {
-              // Preparazione dell'ambiente
-              const consoleOutput: string[] = [];
-              const customConsole = {
-                log: (...args: any[]) => {
-                  consoleOutput.push(args.map(arg => 
-                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-                  ).join(' '));
-                },
-                error: (...args: any[]) => {
-                  consoleOutput.push(`Error: ${args.map(arg => 
-                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-                  ).join(' ')}`);
-                },
-                warn: (...args: any[]) => {
-                  consoleOutput.push(`Warning: ${args.map(arg => 
-                    typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-                  ).join(' ')}`);
-                }
-              };
-              
-              // Esegue il codice in un contesto isolato
-              const result = new Function('console', `
-                try {
-                  ${activeFile.content}
-                  return { success: true, output: console };
-                } catch (error) {
-                  return { success: false, error: error.message };
-                }
-              `)(customConsole);
-              
-              if (result.success) {
-                if (consoleOutput.length > 0) {
-                  // Crea un nuovo tab con l'output della console
-                  const outputTabId = 'output-' + Date.now();
-                  const outputTab: FileTab = {
-                    id: outputTabId,
-                    name: 'console-output.txt',
-                    language: 'plaintext',
-                    content: `// Output dell'esecuzione di ${activeFile.name}\n// ${new Date().toLocaleString()}\n\n${consoleOutput.join('\n')}`,
-                    isDirty: false
-                  };
-                  
-                  setFileTabs(prev => [...prev, outputTab]);
-                  setActiveFileId(outputTabId);
-                  
-                  // Inizializza la history per il nuovo tab
-                  setHistory(prev => ({
-                    ...prev,
-                    [outputTabId]: { past: [], future: [] }
-                  }));
-                } else {
-                  toast.success('Esecuzione completata senza output');
-                }
-              } else {
-                toast.error(`Errore: ${result.error}`);
-              }
-            } catch (error: any) {
-              toast.error(`Errore di sintassi: ${error.message}`);
-            }
-            break;
-            
-          case 'html':
-            // Per HTML, apri una nuova finestra con il contenuto
-            const blob = new Blob([activeFile.content], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-            URL.revokeObjectURL(url);
-            toast.success('Anteprima HTML aperta in una nuova scheda');
-            break;
-            
-          case 'css':
-            // Per CSS, mostra un'anteprima con un HTML di base
-            const htmlContent = `
-              <!DOCTYPE html>
-              <html>
-              <head>
-                <style>${activeFile.content}</style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>Anteprima CSS</h1>
-                  <p>Questo è un esempio di testo con il tuo CSS applicato.</p>
-                  <button>Pulsante di esempio</button>
-                  <div class="box">Box di esempio</div>
-                </div>
-              </body>
-              </html>
-            `;
-            const cssBlob = new Blob([htmlContent], { type: 'text/html' });
-            const cssUrl = URL.createObjectURL(cssBlob);
-            window.open(cssUrl, '_blank');
-            URL.revokeObjectURL(cssUrl);
-            toast.success('Anteprima CSS aperta in una nuova scheda');
-            break;
-            
-          case 'python':
-            toast.info('Simulazione esecuzione Python...');
-            // Simuliamo l'output di Python
-            setTimeout(() => {
-              // Crea un nuovo tab con l'output simulato
-              const pythonOutputId = 'python-output-' + Date.now();
-              const pythonOutput = simulatePythonExecution(activeFile.content);
-              
-              const outputTab: FileTab = {
-                id: pythonOutputId,
-                name: 'python-output.txt',
-                language: 'plaintext',
-                content: pythonOutput,
-                isDirty: false
-              };
-              
-              setFileTabs(prev => [...prev, outputTab]);
-              setActiveFileId(pythonOutputId);
-              
-              // Inizializza la history per il nuovo tab
-              setHistory(prev => ({
-                ...prev,
-                [pythonOutputId]: { past: [], future: [] }
-              }));
-              
-              toast.success('Esecuzione Python completata');
-            }, 1500);
-            break;
-            
-          default:
-            toast.info(`Esecuzione di ${activeFile.language} non supportata in questa demo`);
-            break;
-        }
-      } catch (error: any) {
-        toast.error(`Errore durante l'esecuzione: ${error.message}`);
+    try {
+      // Per JavaScript/TypeScript, puoi usare eval in ambiente di sviluppo
+      // In produzione, sarebbe meglio usare un approccio più sicuro
+      if (activeFile.language === 'javascript' || activeFile.language === 'typescript') {
+        // Esegui in un contesto isolato
+        const result = new Function(activeFile.content)();
+        toast.success('Codice eseguito con successo');
+      } else {
+        toast.info(`Esecuzione del codice ${activeFile.language} non supportata nell'editor`);
       }
-    }, 1000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Errore nell'esecuzione: ${errorMessage}`);
+    }
   };
-  
-  // Funzione per simulare l'esecuzione di Python
-  const simulatePythonExecution = (code: string): string => {
-    let output = `# Output simulato dell'esecuzione Python\n# ${new Date().toLocaleString()}\n\n`;
-    
-    // Estrai i print statements dal codice
-    const printRegex = /print\s*\((.*?)\)/g;
-    let match;
-    let hasPrints = false;
-    
-    while ((match = printRegex.exec(code)) !== null) {
-      hasPrints = true;
-      let content = match[1].trim();
-      // Rimuovi le virgolette se presenti
-      if ((content.startsWith('"') && content.endsWith('"')) || 
-          (content.startsWith("'") && content.endsWith("'"))) {
-        content = content.substring(1, content.length - 1);
-      }
-      output += `${content}\n`;
-    }
-    
-    // Se non ci sono print, aggiungi un messaggio
-    if (!hasPrints) {
-      output += "# L'esecuzione non ha prodotto output (nessun print statement trovato)\n";
-      
-      // Aggiungi alcuni suggerimenti
-      if (code.includes('def ')) {
-        output += "# Hai definito una funzione ma non l'hai chiamata\n";
-      }
-      
-      if (code.includes('class ')) {
-        output += "# Hai definito una classe ma non hai creato istanze\n";
-      }
-    }
-    
-    return output;
-  };
-  
-  // Simula il download del file
+
   const handleDownload = () => {
     try {
       const blob = new Blob([activeFile.content], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = activeFile.name;
-      a.click();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = activeFile.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
       toast.success(`File ${activeFile.name} scaricato`);
     } catch (error) {
-      toast.error('Si è verificato un errore durante il download');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Errore nel download: ${errorMessage}`);
     }
   };
-  
-  // Crea un nuovo file
+
   const handleNewFile = () => {
-    // Genera un nome file predefinito basato sul tipo
-    const fileCount = fileTabs.length + 1;
-    const newFileName = `file${fileCount}.js`;
+    const fileName = prompt('Nome del nuovo file:');
+    if (!fileName) return;
     
-    const newTab: FileTab = {
+    // Determina l'estensione e il linguaggio
+    const extension = fileName.split('.').pop() || 'js';
+    let language = 'javascript';
+    
+    // Mappa le estensioni comuni ai linguaggi
+    const extensionMap: Record<string, string> = {
+      'js': 'javascript',
+      'ts': 'typescript',
+      'html': 'html',
+      'css': 'css',
+      'json': 'json',
+      'md': 'markdown',
+      'py': 'python',
+      'java': 'java',
+      'c': 'c',
+      'cpp': 'cpp'
+    };
+    
+    if (extensionMap[extension]) {
+      language = extensionMap[extension];
+    }
+    
+    // Crea il nuovo file
+    const newFile: FileTab = {
       id: 'file-' + Date.now(),
-      name: newFileName,
-      language: 'javascript',
-      content: '// Nuovo file JavaScript\n\n',
+      name: fileName,
+      language,
+      content: '',
       isDirty: false
     };
     
-    setFileTabs(prev => [...prev, newTab]);
-    setActiveFileId(newTab.id);
+    // Aggiungi il file e imposta come attivo
+    setFileTabs(prev => [...prev, newFile]);
+    setActiveFileId(newFile.id);
     
-    // Inizializza la history per il nuovo tab
+    // Inizializza la history per il nuovo file
     setHistory(prev => ({
       ...prev,
-      [newTab.id]: { past: [], future: [] }
+      [newFile.id]: { past: [], future: [] }
     }));
-  };
-  
-  // Chiude un file
-  const handleCloseFile = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
     
-    // Se è l'ultimo file, non permettere la chiusura
-    if (fileTabs.length <= 1) {
-      toast.info('Non puoi chiudere l\'ultimo file');
+    toast.success(`Nuovo file ${fileName} creato`);
+  };
+
+  const handleFileUpload = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.js,.ts,.html,.css,.json,.md,.py,.java,.c,.cpp,.txt';
+    
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        
+        // Determina il linguaggio dall'estensione
+        const extension = file.name.split('.').pop() || 'txt';
+        let language = 'text';
+        
+        // Mappa le estensioni comuni ai linguaggi
+        const extensionMap: Record<string, string> = {
+          'js': 'javascript',
+          'ts': 'typescript',
+          'html': 'html',
+          'css': 'css',
+          'json': 'json',
+          'md': 'markdown',
+          'py': 'python',
+          'java': 'java',
+          'c': 'c',
+          'cpp': 'cpp'
+        };
+        
+        if (extensionMap[extension]) {
+          language = extensionMap[extension];
+        }
+        
+        // Crea il nuovo file
+        const newFile: FileTab = {
+          id: 'file-' + Date.now(),
+          name: file.name,
+          language,
+          content,
+          isDirty: false
+        };
+        
+        // Aggiungi il file e imposta come attivo
+        setFileTabs(prev => [...prev, newFile]);
+        setActiveFileId(newFile.id);
+        
+        // Inizializza la history per il nuovo file
+        setHistory(prev => ({
+          ...prev,
+          [newFile.id]: { past: [], future: [] }
+        }));
+        
+        toast.success(`File ${file.name} caricato`);
+      };
+      
+      reader.readAsText(file);
+    };
+    
+    input.click();
+  };
+
+  const handleFormat = () => {
+    try {
+      // In un'implementazione reale, utilizzeresti una libreria come prettier
+      // Per ora, facciamo una semplice indentazione
+      const formattedCode = activeFile.content
+        .split('\n')
+        .map((line: string) => line.trim())
+        .join('\n');
+      
+      // Salva lo stato corrente nella history prima di aggiornare
+      if (history[activeFileId]) {
+        setHistory(prev => ({
+          ...prev,
+          [activeFileId]: {
+            past: [...prev[activeFileId].past, activeFile.content],
+            future: []
+          }
+        }));
+      }
+      
+      // Aggiorna il contenuto del file
+      setFileTabs(prev =>
+        prev.map(tab =>
+          tab.id === activeFileId
+            ? { ...tab, content: formattedCode, isDirty: true }
+            : tab
+        )
+      );
+      
+      toast.success('Codice formattato');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Errore nella formattazione: ${errorMessage}`);
+    }
+  };
+
+  const handleCloseFile = (fileId: string, e?: React.MouseEvent) => {
+    // Previeni la propagazione dell'evento se fornito
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    // Controlla se il file è l'unico rimasto
+    if (fileTabs.length === 1) {
+      toast.info('Non puoi chiudere l\'unico file aperto');
       return;
     }
     
-    // Chiedi conferma se il file è dirty
-    const fileToClose = fileTabs.find(tab => tab.id === id);
+    // Controlla se il file ha modifiche non salvate
+    const fileToClose = fileTabs.find(tab => tab.id === fileId);
     if (fileToClose?.isDirty) {
-      if (!confirm(`Il file ${fileToClose.name} ha modifiche non salvate. Vuoi chiuderlo comunque?`)) {
+      if (!confirm(`Il file "${fileToClose.name}" ha modifiche non salvate. Vuoi chiuderlo comunque?`)) {
         return;
       }
     }
     
-    // Rimuovi il file
-    const newTabs = fileTabs.filter(tab => tab.id !== id);
-    setFileTabs(newTabs);
+    // Rimuovi il file dalle schede
+    const newFileTabs = fileTabs.filter(tab => tab.id !== fileId);
+    setFileTabs(newFileTabs);
     
-    // Se il file attivo viene chiuso, attiva l'ultimo file
-    if (id === activeFileId) {
-      setActiveFileId(newTabs[newTabs.length - 1].id);
+    // Se il file chiuso era quello attivo, imposta un altro file come attivo
+    if (fileId === activeFileId) {
+      setActiveFileId(newFileTabs[0].id);
     }
     
-    // Rimuovi la history per questo file
+    // Rimuovi la history del file
     setHistory(prev => {
       const newHistory = { ...prev };
-      delete newHistory[id];
+      delete newHistory[fileId];
       return newHistory;
     });
+    
+    toast.success(`File chiuso`);
   };
-  
-  // Gestisce le modifiche al contenuto del file
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
+
+  const handleSearch = () => {
+    if (!searchText.trim()) {
+      toast.info('Inserisci un testo da cercare');
+      return;
+    }
+    
+    const content = activeFile.content;
+    const searchRegex = new RegExp(searchText, 'gi');
+    const matches = content.match(searchRegex);
+    
+    if (!matches) {
+      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      return;
+    }
+    
+    // Qui potresti implementare la selezione del testo trovato
+    // o lo scroll alla posizione corretta
+    toast.success(`Trovate ${matches.length} corrispondenze per "${searchText}"`);
+    
+    // Esempio: seleziona la prima occorrenza
+    const firstIndex = content.toLowerCase().indexOf(searchText.toLowerCase());
+    if (firstIndex >= 0 && editorRef.current) {
+      editorRef.current.focus();
+      editorRef.current.setSelectionRange(firstIndex, firstIndex + searchText.length);
+    }
+  };
+
+  const handleReplace = () => {
+    if (!searchText.trim()) {
+      toast.info('Inserisci un testo da cercare');
+      return;
+    }
+    
+    const content = activeFile.content;
+    const firstIndex = content.toLowerCase().indexOf(searchText.toLowerCase());
+    
+    if (firstIndex < 0) {
+      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      return;
+    }
+    
+    // Sostituisci la prima occorrenza
+    const newContent = 
+      content.substring(0, firstIndex) + 
+      replaceText + 
+      content.substring(firstIndex + searchText.length);
     
     // Salva lo stato corrente nella history prima di aggiornare
     if (history[activeFileId]) {
@@ -477,482 +371,381 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     }
     
     // Aggiorna il contenuto del file
-    setFileTabs(prev => 
-      prev.map(tab => 
-        tab.id === activeFileId 
-          ? { ...tab, content: newContent, isDirty: true } 
+    setFileTabs(prev =>
+      prev.map(tab =>
+        tab.id === activeFileId
+          ? { ...tab, content: newContent, isDirty: true }
+          : tab
+      )
+    );
+    
+    toast.success(`Sostituita la prima occorrenza di "${searchText}" con "${replaceText}"`);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Gestisci i tasti di scelta rapida qui
+    if (e.ctrlKey && e.key === 's') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      handleRun();
+    }
+    // Aggiungi altre scorciatoie da tastiera secondo necessità
+  };
+
+  const handleReplaceAll = () => {
+    if (!searchText.trim()) {
+      toast.info('Inserisci un testo da cercare');
+      return;
+    }
+    
+    const content = activeFile.content;
+    const searchRegex = new RegExp(searchText, 'gi');
+    const newContent = content.replace(searchRegex, replaceText);
+    
+    if (newContent === content) {
+      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      return;
+    }
+    
+    // Salva lo stato corrente nella history prima di aggiornare
+    if (history[activeFileId]) {
+      setHistory(prev => ({
+        ...prev,
+        [activeFileId]: {
+          past: [...prev[activeFileId].past, activeFile.content],
+          future: []
+        }
+      }));
+    }
+    
+    // Aggiorna il contenuto del file
+    setFileTabs(prev =>
+      prev.map(tab =>
+        tab.id === activeFileId
+          ? { ...tab, content: newContent, isDirty: true }
+          : tab
+      )
+    );
+    
+    // Conta quante sostituzioni sono state fatte
+    const matches = content.match(searchRegex);
+    const count = matches ? matches.length : 0;
+    
+    toast.success(`Sostituite ${count} occorrenze di "${searchText}" con "${replaceText}"`);
+  };
+
+  // Funzione per gestire il cambiamento del contenuto dell'editor
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    setFileTabs(prev =>
+      prev.map(tab =>
+        tab.id === activeFileId
+          ? { ...tab, content: newContent, isDirty: true }
           : tab
       )
     );
   };
-  
-  // Funzioni per undo/redo
-  const handleUndo = () => {
-    const fileHistory = history[activeFileId];
-    if (fileHistory && fileHistory.past.length > 0) {
-      const newPast = [...fileHistory.past];
-      const previous = newPast.pop();
-      
-      setHistory(prev => ({
-        ...prev,
-        [activeFileId]: {
-          past: newPast,
-          future: [activeFile.content, ...fileHistory.future]
-        }
-      }));
-      
-      setFileTabs(prev => 
-        prev.map(tab => 
-          tab.id === activeFileId 
-            ? { ...tab, content: previous || '', isDirty: true } 
+
+  // Funzione per salvare il contenuto dell'editor
+  const handleSave = () => {
+    const activeFile = fileTabs.find(tab => tab.id === activeFileId);
+    if (activeFile) {
+      updatePanelContent(panel.id, activeFile.content);
+      setFileTabs(prev =>
+        prev.map(tab =>
+          tab.id === activeFileId
+            ? { ...tab, isDirty: false }
+            : tab
+        )
+      );
+      toast.success('File salvato con successo');
+    }
+  };
+
+  // Funzioni esistenti...
+  const loadAndSetActiveFileId = async (id: string) => {
+    const content = await loadFileContent(id);
+    if (content) {
+      setFileTabs(prev =>
+        prev.map(tab =>
+          tab.id === id
+            ? { ...tab, content }
             : tab
         )
       );
     }
+    // Aggiorna l'ID del file attivo
+    setActiveFileId(id);
   };
-  
-  const handleRedo = () => {
-    const fileHistory = history[activeFileId];
-    if (fileHistory && fileHistory.future.length > 0) {
-      const [next, ...newFuture] = fileHistory.future;
-      
-      setHistory(prev => ({
-        ...prev,
-        [activeFileId]: {
-          past: [...fileHistory.past, activeFile.content],
-          future: newFuture
-        }
-      }));
-      
-      setFileTabs(prev => 
-        prev.map(tab => 
-          tab.id === activeFileId 
-            ? { ...tab, content: next, isDirty: true } 
-            : tab
-        )
-      );
-    }
-  };
-  
-  // Gestisce la ricerca nel testo
-  const handleSearch = () => {
-    if (!searchText) return;
-    
-    if (editorRef.current) {
-      const content = activeFile.content;
-      const selectionStart = editorRef.current.selectionStart;
-      
-      // Cerca dalla posizione corrente
-      const nextIndex = content.indexOf(searchText, selectionStart);
-      
-      if (nextIndex >= 0) {
-        // Imposta la selezione sul testo trovato
-        editorRef.current.focus();
-        editorRef.current.setSelectionRange(nextIndex, nextIndex + searchText.length);
-        
-        // Assicurati che sia visibile (scroll)
-        const lineHeight = 20; // altezza approssimativa di una riga
-        const linesBeforeMatch = content.substring(0, nextIndex).split('\n').length;
-        editorRef.current.scrollTop = lineHeight * (linesBeforeMatch - 2);
-      } else {
-        // Se non trova nulla da questa posizione, ricomincia dall'inizio
-        const fromStart = content.indexOf(searchText);
-        
-        if (fromStart >= 0) {
-          editorRef.current.focus();
-          editorRef.current.setSelectionRange(fromStart, fromStart + searchText.length);
-          
-          const lineHeight = 20;
-          const linesBeforeMatch = content.substring(0, fromStart).split('\n').length;
-          editorRef.current.scrollTop = lineHeight * (linesBeforeMatch - 2);
-          
-          toast.info('Ricerca ripartita dall\'inizio');
-        } else {
-          toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
-        }
-      }
-    }
-  };
-  
-  // Sostituisce il testo trovato
-  const handleReplace = () => {
-    if (!searchText || !replaceText) return;
-    
-    if (editorRef.current) {
-      const start = editorRef.current.selectionStart;
-      const end = editorRef.current.selectionEnd;
-      const selectedText = activeFile.content.substring(start, end);
-      
-      // Verifica se il testo selezionato corrisponde al testo di ricerca
-      if (selectedText === searchText) {
-        // Sostituisci la selezione
-        const newContent = 
-          activeFile.content.substring(0, start) + 
-          replaceText + 
-          activeFile.content.substring(end);
-        
-        // Aggiorna il contenuto del file
-        setFileTabs(prev => 
-          prev.map(tab => 
-            tab.id === activeFileId 
-              ? { ...tab, content: newContent, isDirty: true } 
-              : tab
-          )
-        );
-        
-        // Aggiorna la posizione del cursore
-        setTimeout(() => {
-          if (editorRef.current) {
-            editorRef.current.focus();
-            editorRef.current.setSelectionRange(start + replaceText.length, start + replaceText.length);
-          }
-        }, 0);
-        
-        // Prosegui con la ricerca
-        setTimeout(handleSearch, 10);
-      } else {
-        // Se non c'è una selezione corrispondente, esegui una ricerca
-        handleSearch();
-      }
-    }
-  };
-  
-  // Sostituisce tutte le occorrenze
-  const handleReplaceAll = () => {
-    if (!searchText || !replaceText) return;
-    
-    const newContent = activeFile.content.replace(new RegExp(searchText, 'g'), replaceText);
-    const count = (activeFile.content.match(new RegExp(searchText, 'g')) || []).length;
-    
-    if (count > 0) {
-      // Aggiorna il contenuto del file
-      setFileTabs(prev => 
-        prev.map(tab => 
-          tab.id === activeFileId 
-            ? { ...tab, content: newContent, isDirty: true } 
-            : tab
-        )
-      );
-      
-      toast.success(`Sostituite ${count} occorrenze`);
-    } else {
-      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
-    }
-  };
-  
-  // Copia negli appunti
-  const handleCopy = () => {
-    if (editorRef.current) {
-      const start = editorRef.current.selectionStart;
-      const end = editorRef.current.selectionEnd;
-      
-      if (start !== end) {
-        const selectedText = activeFile.content.substring(start, end);
-        navigator.clipboard.writeText(selectedText)
-          .then(() => toast.success('Testo copiato negli appunti'))
-          .catch(() => toast.error('Impossibile copiare il testo'));
-      } else {
-        // Se non c'è selezione, copia l'intero contenuto
-        navigator.clipboard.writeText(activeFile.content)
-          .then(() => toast.success('Intero file copiato negli appunti'))
-          .catch(() => toast.error('Impossibile copiare il testo'));
-      }
-    }
-  };
-  
-  // Funzione per formattare il codice (solo JavaScript/JSON per semplicità)
-  const handleFormat = () => {
+  // Funzione per applicare il codice generato dall'AI
+  const handleCodeGenerated = async (newCode: string) => {
     try {
-      let formattedContent = activeFile.content;
+      const response = await executeCommand({
+        type: 'CREATE_FILE',
+        params: {
+          fileName: activeFile.name,
+          content: newCode,
+          type: activeFile.language,
+          path: '/'
+        },
+        originalText: `Aggiorna il file ${activeFile.name} con il nuovo codice`
+      }, 'user-id'); // Sostituisci con l'ID utente reale
       
-      if (activeFile.language === 'json') {
-        // Formatta JSON
-        const jsonObj = JSON.parse(activeFile.content);
-        formattedContent = JSON.stringify(jsonObj, null, tabSize);
-      } else if (['javascript', 'typescript'].includes(activeFile.language)) {
-        // Simuliamo la formattazione indentando ogni riga dopo { e }
-        formattedContent = formatJavaScript(activeFile.content, tabSize);
-      } else {
-        toast.info(`La formattazione per ${activeFile.language} non è supportata in questa demo`);
-        return;
-      }
-      
-      // Aggiorna il contenuto
-      setFileTabs(prev => 
-        prev.map(tab => 
-          tab.id === activeFileId 
-            ? { ...tab, content: formattedContent, isDirty: true } 
+      setFileTabs(prev =>
+        prev.map(tab =>
+          tab.id === activeFileId
+            ? { ...tab, content: newCode, isDirty: true }
             : tab
         )
       );
       
-      toast.success('Codice formattato');
+      toast.success(response);
     } catch (error: any) {
-      toast.error(`Errore durante la formattazione: ${error.message}`);
+      toast.error(`Errore nell'aggiornamento del file: ${error.message}`);
     }
   };
-  
-  // Funzione semplice per formattare codice JavaScript
-  const formatJavaScript = (code: string, spaces: number): string => {
-    const lines = code.split('\n');
-    let formattedLines: string[] = [];
-    let indentLevel = 0;
-    
-    for (let line of lines) {
-      // Rimuovi spazi all'inizio e alla fine
-      const trimmedLine = line.trim();
+
+  const loadFileContent = async (fileId: string) => {
+    try {
+      const response = await executeCommand({
+        type: 'READ_FILE',
+        params: { fileId },
+        originalText: `Leggi il contenuto del file con ID ${fileId}`
+      }, 'user-id'); // Sostituisci con l'ID utente reale
       
-      // Se la riga contiene solo una parentesi chiusa, riduci l'indentazione prima
-      if (/^[\}\]\)]+$/.test(trimmedLine)) {
-        indentLevel = Math.max(0, indentLevel - 1);
-      }
-      
-      // Aggiungi la riga con l'indentazione corretta
-      if (trimmedLine.length > 0) {
-        formattedLines.push(' '.repeat(indentLevel * spaces) + trimmedLine);
-      } else {
-        formattedLines.push('');
-      }
-      
-      // Aumenta l'indentazione dopo apertura di blocco
-      if (trimmedLine.includes('{') || trimmedLine.includes('[')) {
-        indentLevel++;
-      }
-      
-      // Riduci l'indentazione dopo chiusura di blocco (ma non se già fatto)
-      if (trimmedLine.includes('}') || trimmedLine.includes(']')) {
-        if (!/^[\}\]\)]+$/.test(trimmedLine)) {
-          indentLevel = Math.max(0, indentLevel - 1);
-        }
-      }
-    }
-    
-    return formattedLines.join('\n');
-  };
-  
-  // Gestisce il caricamento di un file
-  const handleFileUpload = () => {
-    // Crea un input file nascosto
-    const fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = '.js,.ts,.html,.css,.py,.json,.txt,.md';
-    
-    fileInput.onchange = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      if (target.files && target.files.length > 0) {
-        const file = target.files[0];
-        const reader = new FileReader();
-        
-        reader.onload = (event) => {
-          if (event.target && typeof event.target.result === 'string') {
-            // Determina il linguaggio dall'estensione
-            const extension = getFileExtension(file.name);
-            const language = getLanguageFromExtension(extension);
-            
-            // Crea un nuovo tab con il contenuto del file
-            const newFileId = 'file-' + Date.now();
-            const newFile: FileTab = {
-              id: newFileId,
-              name: file.name,
-              language,
-              content: event.target.result,
-              isDirty: false
-            };
-            
-            setFileTabs(prev => [...prev, newFile]);
-            setActiveFileId(newFile.id);
-            
-            // Inizializza la history per il nuovo tab
-            setHistory(prev => ({
-              ...prev,
-              [newFileId]: { past: [], future: [] }
-            }));
-            
-            toast.success(`File ${file.name} caricato`);
-          }
-        };
-        
-        reader.readAsText(file);
-      }
-    };
-    
-    // Simula il click per aprire il selettore di file
-    fileInput.click();
-  };
-  
-  // Indenta l'editor quando si preme Tab
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Gestione del tasto Tab per indentare il codice
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      
-      const element = e.target as HTMLTextAreaElement;
-      const start = element.selectionStart;
-      const end = element.selectionEnd;
-      
-      // Ottieni il contenuto attuale
-      const value = element.value;
-      
-      // Aggiungi l'indentazione
-      const newContent = 
-        value.substring(0, start) + 
-        ' '.repeat(tabSize) + 
-        value.substring(end);
-      
-      // Aggiorna il contenuto del file
-      setFileTabs(prev => 
-        prev.map(tab => 
-          tab.id === activeFileId 
-            ? { ...tab, content: newContent, isDirty: true } 
-            : tab
-        )
-      );
-      
-      // Aggiorna la posizione del cursore
-      setTimeout(() => {
-        element.selectionStart = element.selectionEnd = start + tabSize;
-      }, 0);
-    }
-    
-    // Scorciatoie da tastiera
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key.toLowerCase()) {
-        case 's':
-          e.preventDefault();
-          handleSave();
-          break;
-        case 'f':
-          e.preventDefault();
-          setShowSearch(true);
-          break;
-        case 'h':
-          e.preventDefault();
-          setShowSearch(true);
-          setShowReplace(true);
-          break;
-        case 'z':
-          e.preventDefault();
-          handleUndo();
-          break;
-        case 'y':
-          e.preventDefault();
-          handleRedo();
-          break;
-      }
+      // Assumiamo che la risposta contenga il contenuto del file
+      return response;
+    } catch (error: any) {
+      toast.error(`Errore nel caricamento del file: ${error.message}`);
+      return null;
     }
   };
+
   
+  
+  // Funzione per generare un nuovo progetto con l'AI
+  const handleLanguageChange = (newLanguage: string) => {
+    setFileTabs(prev =>
+      prev.map(tab =>
+        tab.id === activeFileId
+          ? { ...tab, language: newLanguage }
+          : tab
+      )
+    );
+  };
+
+  const handleGenerateProject = () => {
+    const projectType = prompt('Che tipo di progetto vuoi creare? (es. "To-do app con React", "Blog con Next.js", ecc.)');
+    if (!projectType) return;
+    
+    toast.info(`Generazione di un progetto "${projectType}" in corso...`);
+    
+    // Qui simuliamo la generazione di file multipli
+    setTimeout(() => {
+      // Crea index.html
+      const htmlFile: FileTab = {
+        id: 'file-' + Date.now(),
+        name: 'index.html',
+        language: 'html',
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${projectType}</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script src="app.js"></script>
+</body>
+</html>`,
+        isDirty: false
+      };
+      
+      // Crea styles.css
+      const cssFile: FileTab = {
+        id: 'file-' + Date.now() + 1,
+        name: 'styles.css',
+        language: 'css',
+        content: `* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  line-height: 1.6;
+  color: #333;
+  background-color: #f4f4f4;
+}
+
+#app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}`,
+        isDirty: false
+      };
+      
+      // Crea app.js
+      const jsFile: FileTab = {
+        id: 'file-' + Date.now() + 2,
+        name: 'app.js',
+        language: 'javascript',
+        content: `// ${projectType} - Generated by AI Assistant
+document.addEventListener('DOMContentLoaded', () => {
+  const app = document.getElementById('app');
+  
+  app.innerHTML = \`
+    <h1>${projectType}</h1>
+    <p>This is a starter template for your project.</p>
+    <button id="actionButton">Click me</button>
+  \`;
+  
+  document.getElementById('actionButton').addEventListener('click', () => {
+    alert('Button clicked! Add your functionality here.');
+  });
+});`,
+        isDirty: false
+      };
+      
+      // Aggiungi i file al progetto
+      setFileTabs([htmlFile, cssFile, jsFile]);
+      setActiveFileId(htmlFile.id);
+      
+      // Inizializza la history per i nuovi file
+      setHistory(prev => ({
+        [htmlFile.id]: { past: [], future: [] },
+        [cssFile.id]: { past: [], future: [] },
+        [jsFile.id]: { past: [], future: [] }
+      }));
+      
+      toast.success('Progetto generato con successo!');
+    }, 2000);
+  };
+  
+  // Continua da EditorPanel.tsx
+
   return (
-    <div className="h-full flex flex-col">
+    <div className={`flex flex-col h-full ${darkTheme ? 'dark bg-gray-900 text-white' : 'bg-white text-black'}`}>
       {/* Barra degli strumenti */}
-      <div className="px-4 py-2 border-b border-white/10 bg-surface-dark flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleNewFile}
-            title="Nuovo file"
-          >
-            <FiPlus size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleFileUpload}
-            title="Carica file"
-          >
-            <FiUpload size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleSave}
-            title="Salva (Ctrl+S)"
-          >
-            <FiSave size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleDownload}
-            title="Scarica"
-          >
-            <FiDownload size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleCopy}
-            title="Copia negli appunti"
-          >
-            <FiCopy size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={() => setShowSearch(!showSearch)}
-            title="Cerca (Ctrl+F)"
-          >
-            <FiSearch size={16} />
-          </button>
-        </div>
+      <div className="flex items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+        <button 
+          onClick={handleSave}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Salva (Ctrl+S)"
+        >
+          <FiSave />
+        </button>
+        <button 
+          onClick={handleRun}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Esegui (Ctrl+Enter)"
+        >
+          <FiPlay />
+        </button>
+        <button 
+          onClick={() => setShowSearch(!showSearch)}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Cerca (Ctrl+F)"
+        >
+          <FiSearch />
+        </button>
+        <button 
+          onClick={handleDownload}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Scarica"
+        >
+          <FiDownload />
+        </button>
+        <button 
+          onClick={handleNewFile}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Nuovo file"
+        >
+          <FiPlus />
+        </button>
+        <button 
+          onClick={handleFileUpload}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Carica file"
+        >
+          <FiUpload />
+        </button>
+        <button 
+          onClick={handleFormat}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Formatta codice"
+        >
+          <FiCode />
+        </button>
+        <button 
+          onClick={() => setShowCodeAssistant(!showCodeAssistant)}
+          className={`p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 ${
+            showCodeAssistant ? 'bg-blue-100 dark:bg-blue-800' : ''
+          }`}
+          title="Assistente Codice"
+        >
+          <FiMessageSquare />
+        </button>
         
-        <div className="flex items-center gap-2">
-          {/* Selezione linguaggio */}
-          <select
-            className="bg-surface py-1 px-2 rounded border border-white/10 outline-none focus:border-primary text-sm"
-            value={activeFile.language}
-            onChange={(e) => handleLanguageChange(e.target.value)}
-            title="Seleziona linguaggio"
-          >
-            {languages.map((lang) => (
-              <option key={lang.value} value={lang.value}>
-                {lang.label}
-              </option>
-            ))}
-          </select>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleRun}
-            title="Esegui codice"
-          >
-            <FiPlay size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={handleFormat}
-            title="Formatta codice"
-          >
-            <FiCode size={16} />
-          </button>
-          
-          <button 
-            className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
-            onClick={() => setShowSettings(!showSettings)}
-            title="Impostazioni"
-          >
-            <FiSettings size={16} />
-          </button>
-        </div>
+        <div className="flex-1"></div>
+        
+        <select 
+          value={activeFile.language}
+          onChange={(e) => handleLanguageChange(e.target.value)}
+          title="Seleziona linguaggio"
+          className="p-1 bg-transparent border border-gray-300 dark:border-gray-600 rounded mr-2"
+        >
+          {[
+            { value: 'javascript', label: 'JavaScript' },
+            { value: 'typescript', label: 'TypeScript' },
+            { value: 'python', label: 'Python' },
+            { value: 'java', label: 'Java' },
+            { value: 'csharp', label: 'C#' },
+            { value: 'cpp', label: 'C++' },
+            { value: 'ruby', label: 'Ruby' },
+            { value: 'go', label: 'Go' },
+            { value: 'php', label: 'PHP' },
+            { value: 'swift', label: 'Swift' }
+          ].map((lang) => (
+            <option key={lang.value} value={lang.value}>
+              {lang.label}
+            </option>
+          ))}
+        </select>
+        
+        <button 
+          onClick={() => setShowSettings(!showSettings)}
+          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" 
+          title="Impostazioni"
+        >
+          <FiSettings />
+        </button>
       </div>
       
       {/* Barra delle schede */}
-      <div className="flex items-center border-b border-white/10 bg-surface-dark overflow-x-auto">
+      <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         {fileTabs.map(tab => (
           <div 
             key={tab.id}
-            className={`flex items-center min-w-0 max-w-48 h-9 px-3 border-r border-white/10 cursor-pointer ${
-              tab.id === activeFileId ? 'bg-surface' : 'bg-surface-dark hover:bg-surface/50'
+            className={`flex items-center px-3 py-2 cursor-pointer border-r border-gray-200 dark:border-gray-700 ${
+              tab.id === activeFileId 
+                ? 'bg-white dark:bg-gray-900 font-medium' 
+                : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
             onClick={() => setActiveFileId(tab.id)}
           >
-            <div className="truncate text-sm mr-2">
+            <span className="truncate max-w-xs">
               {tab.name}
-              {tab.isDirty && <span className="text-primary ml-1">•</span>}
-            </div>
-            <button
-              className="p-1 rounded-full hover:bg-white/10 text-white/50 hover:text-white/80"
+              {tab.isDirty && ' •'}
+            </span>
+            <button 
+              className="ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               onClick={(e) => handleCloseFile(tab.id, e)}
               title="Chiudi scheda"
             >
@@ -964,103 +757,96 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       
       {/* Barra di ricerca */}
       {showSearch && (
-        <div className="px-4 py-2 border-b border-white/10 bg-surface flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Cerca..."
-              className="w-48 bg-surface-dark rounded py-1 px-2 text-sm border border-white/10 focus:border-primary outline-none"
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <button
-              className="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary"
-              onClick={handleSearch}
-            >
-              <FiSearch size={14} />
-            </button>
-            <button
-              className="p-1 rounded hover:bg-white/10 text-white/70"
-              onClick={() => setShowReplace(!showReplace)}
-              title="Mostra/nascondi opzioni di sostituzione"
-            >
-              {showReplace ? <FiCheck size={14} /> : <FiClipboard size={14} />}
-            </button>
-          </div>
-          
+        <div className="flex items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <input
+            type="text"
+            placeholder="Cerca nel file..."
+            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded mr-2 flex-1"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          />
+          <button 
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
+            onClick={handleSearch}
+          >
+            Trova
+          </button>
+          <button 
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
+            onClick={() => setShowReplace(!showReplace)}
+            title="Mostra/nascondi opzioni di sostituzione"
+          >
+            {showReplace ? 'Nascondi sostituzione' : 'Sostituisci'}
+          </button>
           {showReplace && (
-            <div className="flex items-center gap-2">
+            <>
               <input
                 type="text"
                 placeholder="Sostituisci con..."
-                className="w-48 bg-surface-dark rounded py-1 px-2 text-sm border border-white/10 focus:border-primary outline-none"
+                className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded mr-2 flex-1"
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
               />
-              <button
-                className="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary"
+              <button 
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
                 onClick={handleReplace}
-                title="Sostituisci"
               >
-                <FiClipboard size={14} />
+                Sostituisci
               </button>
-              <button
-                className="p-1 rounded bg-primary/20 hover:bg-primary/30 text-primary"
+              <button 
+                className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
                 onClick={handleReplaceAll}
-                title="Sostituisci tutto"
               >
-                <FiGitMerge size={14} />
+                Sostituisci tutto
               </button>
-            </div>
+            </>
           )}
-          
-          <button
-            className="ml-auto p-1 rounded hover:bg-white/10 text-white/70"
+          <button 
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
             onClick={() => setShowSearch(false)}
             title="Chiudi"
           >
-            <FiX size={14} />
+            <FiX />
           </button>
         </div>
       )}
       
       {/* Pannello impostazioni */}
       {showSettings && (
-        <div className="absolute right-4 top-14 w-64 bg-surface-dark border border-white/10 rounded-lg shadow-xl z-10 p-4">
-          <h3 className="font-medium mb-3 flex items-center justify-between">
-            Impostazioni Editor
-            <button
-              className="p-1 rounded hover:bg-white/10 text-white/70"
+        <div className="absolute right-0 top-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg p-4 z-10 w-80">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-medium">Impostazioni Editor</h3>
+            <button 
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               onClick={() => setShowSettings(false)}
             >
-              <FiX size={14} />
+              <FiX />
             </button>
-          </h3>
+          </div>
           
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-white/70 mb-1">Dimensione testo</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="range"
-                  min="10"
-                  max="24"
-                  step="1"
-                  value={fontSize}
+            <div className="flex items-center justify-between">
+              <label>Dimensione testo</label>
+              <div className="flex items-center">
+                <input 
+                  type="range" 
+                  min="10" 
+                  max="24" 
+                  value={fontSize} 
                   onChange={(e) => setFontSize(parseInt(e.target.value))}
                   className="flex-1"
                 />
-                <span className="text-sm">{fontSize}px</span>
+                <span className="ml-2 w-10 text-right">{fontSize}px</span>
               </div>
             </div>
             
-            <div>
-              <label className="block text-sm text-white/70 mb-1">Dimensione tab</label>
-              <select
-                className="w-full bg-surface rounded py-1 px-2 text-sm border border-white/10 focus:border-primary outline-none"
-                value={tabSize}
+            <div className="flex items-center justify-between">
+              <label>Dimensione tab</label>
+              <select 
+                value={tabSize} 
                 onChange={(e) => setTabSize(parseInt(e.target.value))}
+                className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
               >
                 <option value="2">2 spazi</option>
                 <option value="4">4 spazi</option>
@@ -1069,95 +855,101 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
             </div>
             
             <div className="flex items-center justify-between">
-              <label className="text-sm text-white/70">Tema scuro</label>
-              <button
-                className={`w-12 h-6 rounded-full relative ${darkTheme ? 'bg-primary' : 'bg-white/20'}`}
-                onClick={() => setDarkTheme(!darkTheme)}
-              >
-                <div 
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${darkTheme ? 'left-7' : 'left-1'}`}
-              >
-              </div>
-            </button>
+              <label>Tema scuro</label>
+              <input 
+                type="checkbox" 
+                checked={darkTheme} 
+                onChange={() => setDarkTheme(!darkTheme)}
+                className="h-5 w-5"
+              />
             </div>
             
             <div className="flex items-center justify-between">
-              <label className="text-sm text-white/70">Salvataggio automatico</label>
-              <button
-                className={`w-12 h-6 rounded-full relative ${autoSave ? 'bg-primary' : 'bg-white/20'}`}
-                onClick={() => setAutoSave(!autoSave)}
-              >
-                <div 
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${autoSave ? 'left-7' : 'left-1'}`}
-                >
-                </div>
-              </button>
+              <label>Salvataggio automatico</label>
+              <input 
+                type="checkbox" 
+                checked={autoSave} 
+                onChange={() => setAutoSave(!autoSave)}
+                className="h-5 w-5"
+              />
             </div>
             
             <div className="flex items-center justify-between">
-              <label className="text-sm text-white/70">Numeri di riga</label>
-              <button
-                className={`w-12 h-6 rounded-full relative ${showLineNumbers ? 'bg-primary' : 'bg-white/20'}`}
-                onClick={() => setShowLineNumbers(!showLineNumbers)}
-              >
-                <div 
-                  className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${showLineNumbers ? 'left-7' : 'left-1'}`}
-                >
-                </div>
-              </button>
+              <label>Numeri di riga</label>
+              <input 
+                type="checkbox" 
+                checked={showLineNumbers} 
+                onChange={() => setShowLineNumbers(!showLineNumbers)}
+                className="h-5 w-5"
+              />
             </div>
           </div>
         </div>
       )}
       
-      {/* Editor */}
-      <div className="flex-1 relative overflow-hidden flex">
-        {/* Numeri di riga */}
-        {showLineNumbers && (
-          <div className="w-12 p-4 bg-surface-dark text-white/30 font-mono text-right select-none overflow-y-hidden">
-            {activeFile.content.split('\n').map((_, i) => (
-              <div 
-                key={i} 
-                style={{ fontSize: `${fontSize}px`, lineHeight: '1.5' }}
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-        )}
-        
-        {/* Area di testo per l'editor */}
-        <textarea
-          ref={editorRef}
-          className="w-full h-full p-4 bg-surface-dark outline-none text-white font-mono resize-none"
-          value={activeFile.content}
-          onChange={handleContentChange}
-          onKeyDown={handleKeyDown}
-          spellCheck={false}
-          style={{ 
-            fontSize: `${fontSize}px`, 
-            lineHeight: '1.5',
-            backgroundColor: darkTheme ? '#1a1a2e' : '#2a2a3a'
-          }}
-        />
+      {/* Area principale con editor e assistente AI */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor */}
+        <div className="flex-1 flex relative">
+          {/* Numeri di riga */}
+          {showLineNumbers && (
+            <div className="text-right pr-2 pt-2 pb-2 bg-gray-50 dark:bg-gray-800 text-gray-500 select-none overflow-y-auto">
+              {activeFile.content.split('\n').map((_: string, i: number) => (
+                <div key={i} className="leading-6" style={{ fontSize: `${fontSize}px` }}>
+                  {i + 1}
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {/* Area di testo per l'editor */}
+    <textarea
+      ref={editorRef}
+      className="flex-1 p-2 resize-none outline-none font-mono bg-white dark:bg-gray-900 text-black dark:text-white"
+      style={{ 
+        fontSize: `${fontSize}px`, 
+        lineHeight: '1.5',
+        tabSize: tabSize
+      }}
+      value={activeFile.content}
+      onChange={handleContentChange}
+      onKeyDown={handleKeyDown}
+      spellCheck={false}
+    />
+          
+          {/* Assistente Codice */}
+            {showCodeAssistant && (
+              <CodeAssistant 
+                onCodeGenerated={handleCodeGenerated}
+                currentCode={activeFile.content}
+                language={activeFile.language}
+                fileName={activeFile.name}
+              />
+            )}
+        </div>
       </div>
       
       {/* Status bar */}
-      <div className="px-4 py-1 border-t border-white/10 bg-surface-dark flex items-center justify-between text-xs text-white/50">
-        <div className="flex items-center gap-4">
-          <div>{activeFile.language.toUpperCase()}</div>
-          <div>Riga: {activeFile.content.substring(0, editorRef.current?.selectionStart || 0).split('\n').length}</div>
-          <div>Colonna: {
-            editorRef.current?.selectionStart !== undefined 
-              ? (activeFile.content.substring(0, editorRef.current.selectionStart).split('\n').pop() || '').length 
-              : 0
-          }</div>
-          <div>{activeFile.content.split('\n').length} righe</div>
+      <div className="flex items-center justify-between px-3 py-1 text-xs border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+        <div className="flex items-center space-x-4">
+          <span>{activeFile.language.toUpperCase()}</span>
+          <span>
+            Riga: {activeFile.content.substring(0, editorRef.current?.selectionStart || 0).split('\n').length}
+          </span>
+          <span>
+            Colonna: {
+              editorRef.current?.selectionStart !== undefined
+                ? (activeFile.content.substring(0, editorRef.current.selectionStart).split('\n').pop() || '').length
+                : 0
+            }
+          </span>
         </div>
-        <div>
-          {activeFile.isDirty ? 'Non salvato' : 'Salvato'}
+        <div className="flex items-center space-x-4">
+          <span>{activeFile.content.split('\n').length} righe</span>
+          <span>{activeFile.isDirty ? 'Non salvato' : 'Salvato'}</span>
         </div>
       </div>
     </div>
-  )
+  );
 }
+

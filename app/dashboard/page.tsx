@@ -1,22 +1,21 @@
 // src/app/dashboard/page.tsx
 "use client"
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { signOut, useSession } from 'next-auth/react'
-import { FiUser, FiLogOut, FiSettings, FiCreditCard } from 'react-icons/fi'
+import { FiUser, FiLogOut, FiSettings, FiCreditCard, FiCommand, FiZap, FiCpu } from 'react-icons/fi'
 import CommandBar from '@/components/core/CommandBar'
 import Workspace from '@/components/core/Workspace'
 import AIAssistant from '@/components/ai/AIAssistant'
 import { useAIStore } from '@/lib/store/aiStore'
 import { useWorkspaceStore } from '@/lib/store/workspaceStore'
 import { useSubscription } from '@/hooks/useSubscription'
-
-// Nuovi componenti per strategia premium
 import PremiumDashboard from '@/components/premium/PremiumDashboard'
 import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
-import UserMenu from '@/components/user/UserMenu'
 import Link from 'next/link'
+import router from 'next/router'
+import UserMenuPortal from '@/components/user/UserMenuPortal'
 
 export default function Dashboard() {
   const { data: session, status } = useSession()
@@ -25,7 +24,34 @@ export default function Dashboard() {
   const { panels, activePanel } = useWorkspaceStore()
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const { subscription } = useSubscription()
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
   
+  // Colori moderni 2025 (stessi di HomeClient)
+  const colors = {
+    primary: "#A47864", // Mocha Mousse (Pantone 2025)
+    secondary: "#A78BFA", // Digital Lavender
+    accent: "#4CAF50", // Verdant Green
+    navy: "#101585", // Navy Blue
+    rose: "#D58D8D", // Muted Rose
+    background: "#0F0F1A", // Dark background
+    surface: "#1A1A2E", // Slightly lighter surface
+    text: "#FFFFFF",
+    textMuted: "rgba(255, 255, 255, 0.7)"
+  }
+
+  // Gestisci la posizione del mouse per l'effetto luce
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY })
+    }
+    
+    window.addEventListener('mousemove', handleMouseMove)
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+    }
+  }, [])
+
   // Simulazione di caricamento iniziale
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -34,142 +60,220 @@ export default function Dashboard() {
     
     return () => clearTimeout(timer)
   }, [])
-  
+
   if (status === 'loading' || isLoading) {
-    return <LoadingScreen />
-  }
-  
-  return (
-    <main className="h-screen w-screen overflow-hidden bg-background flex flex-col">
-      {/* Header con CommandBar */}
-      <header className="h-14 border-b border-white/10 flex items-center px-4">
-        <CommandBar />
+    return (
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center"
+        style={{ background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.surface} 100%)` }}
+      >
+        {/* Pattern di sfondo con animazione */}
+        <motion.div 
+          className="absolute inset-0 bg-grid-pattern opacity-5 z-0"
+          style={{ 
+            backgroundImage: `radial-gradient(${colors.primary}22 1px, transparent 1px)`,
+            backgroundSize: '30px 30px' 
+          }}
+          animate={{ 
+            backgroundPosition: ['0px 0px', '30px 30px'],
+          }}
+          transition={{ 
+            duration: 10, 
+            repeat: Infinity, 
+            ease: "linear" 
+          }}
+        />
         
-        {/* User profile */}
-        <div className="ml-auto relative">
-          <button 
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface hover:bg-surface-light transition-colors"
-            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+        {/* Logo animato */}
+        <motion.div 
+          className="font-mono text-3xl font-semibold tracking-wide mb-8"
+          style={{ color: colors.primary }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          JARVIS WEB OS
+        </motion.div>
+        
+        {/* Animazione di caricamento */}
+        <motion.div
+          className="relative w-24 h-24 mb-8"
+        >
+          <motion.div 
+            className="absolute inset-0 rounded-full"
+            style={{ 
+              border: `3px solid ${colors.primary}20`,
+              borderTop: `3px solid ${colors.primary}`
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div 
+            className="absolute inset-2 rounded-full"
+            style={{ 
+              border: `3px solid ${colors.secondary}20`,
+              borderBottom: `3px solid ${colors.secondary}`
+            }}
+            animate={{ rotate: -360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div 
+            className="absolute inset-4 rounded-full"
+            style={{ 
+              border: `3px solid ${colors.accent}20`,
+              borderLeft: `3px solid ${colors.accent}`
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2.5, repeat: Infinity, ease: "linear" }}
+          />
+          <motion.div 
+            className="absolute inset-0 w-full h-full flex items-center justify-center"
+            initial={{ scale: 0 }}
+            animate={{ scale: [0, 1, 0.8, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center overflow-hidden">
-              {session?.user?.image ? (
-                <img 
-                  src={session.user.image} 
-                  alt={session.user.name || 'User'} 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <FiUser />
-              )}
-            </div>
-            <span className="text-sm">{session?.user?.name || 'Utente'}</span>
-            
-            {/* Badge piano */}
-            <span className={`ml-1 text-xs px-1.5 py-0.5 rounded ${
-              subscription.isPremium 
-                ? 'bg-primary/20 text-primary' 
-                : 'bg-surface-dark text-white/70'
-            }`}>
-              {subscription.plan === 'TEAM' 
-                ? 'Team' 
-                : subscription.plan === 'PREMIUM' 
-                  ? 'Premium' 
-                  : 'Free'}
-            </span>
-          </button>
-          
-          {/* User menu dropdown */}
-          {isUserMenuOpen && (
-            <UserMenu 
-              user={session?.user} 
-              subscription={subscription}
-              onClose={() => setIsUserMenuOpen(false)}
-              onLogout={() => signOut({ callbackUrl: '/' })}
-            />
-          )}
-        </div>
-      </header>
+            <FiCpu className="text-2xl" style={{ color: colors.primary }} />
+          </motion.div>
+        </motion.div>
+        
+        <motion.p 
+          className="text-xl"
+          style={{ color: colors.textMuted }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        >
+          Inizializzazione sistemi...
+        </motion.p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ background: colors.background }}>
+      {/* Effetto di luce che segue il mouse */}
+      <motion.div 
+        className="fixed w-[500px] h-[500px] rounded-full opacity-10 pointer-events-none z-0"
+        style={{ 
+          background: `radial-gradient(circle, ${colors.secondary} 0%, transparent 70%)`,
+          left: mousePosition.x - 250,
+          top: mousePosition.y - 250
+        }}
+        animate={{ 
+          scale: [1, 1.1, 1],
+          opacity: [0.05, 0.1, 0.05]
+        }}
+        transition={{ 
+          duration: 3, 
+          repeat: Infinity,
+          repeatType: 'reverse'
+        }}
+      />
       
-      {/* Area di lavoro principale */}
-      <div className="flex-1 relative flex">
-        {/* Area principale - Mostra Dashboard Premium o Workspace in base al piano */}
-        <div className="flex-1 relative">
-          {!subscription.isPremium ? (
-            <PremiumDashboard />
-          ) : (
-            <Workspace />
-          )}
-          
-          {/* AI Assistant overlay */}
+      {/* Header */}
+      <motion.header 
+        className="border-b border-white/10 p-3 flex items-center justify-between"
+        style={{ background: `rgba(15, 15, 26, 0.8)`, backdropFilter: 'blur(10px)' }}
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.div 
+          className="flex items-center gap-2"
+          whileHover={{ scale: 1.02 }}
+        >
+          <motion.div 
+            className="font-mono text-xl font-semibold tracking-wide"
+            style={{ color: colors.primary }}
+          >
+            JARVIS
+          </motion.div>
+        </motion.div>
+        
+        <div className="flex items-center gap-3">
+  {/* Pulsante AI Assistant */}
+  <motion.button
+    className={`p-2 rounded-md transition-all ${isAssistantActive ? 'bg-primary/20' : 'bg-white/5 hover:bg-white/10'}`}
+    onClick={() => toggleAssistant(!isAssistantActive)}
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+    style={{ 
+      backgroundColor: isAssistantActive ? `${colors.primary}20` : 'rgba(255, 255, 255, 0.05)'
+    }}
+  >
+    <FiZap 
+      className={`text-lg`}
+      style={{ color: isAssistantActive ? colors.primary : 'rgba(255, 255, 255, 0.7)' }} 
+    />
+  </motion.button>
+  
+  {/* Pulsante Command Bar */}
+  <motion.button
+    className="p-2 rounded-md bg-white/5 hover:bg-white/10 transition-all"
+    whileHover={{ scale: 1.05 }}
+    whileTap={{ scale: 0.95 }}
+  >
+    <FiCommand className="text-lg text-white/70" />
+  </motion.button>
+  
+  {/* Nuovo menu utente con portale */}
+  <UserMenuPortal user={session?.user} />
+</div>
+      </motion.header>
+      
+      {/* Main Content */}
+<div className="flex-1 flex">
+  {/* Workspace */}
+  <motion.div 
+    className="flex-1 relative h-[calc(100vh-64px)]" // Aggiungi height esplicita
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.5, delay: 0.2 }}
+  >
+    {subscription?.status !== 'ACTIVE' && (
+      <motion.div 
+        className="p-4 m-4 rounded-lg"
+        style={{ 
+          background: `linear-gradient(135deg, ${colors.primary}20 0%, ${colors.secondary}20 100%)`,
+          border: `1px solid ${colors.primary}40`,
+        }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+      >
+        {/* ... contenuto banner premium ... */}
+      </motion.div>
+    )}
+    
+    <motion.div 
+      className="p-4 h-full" // Aggiungi h-full
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5, delay: 0.6 }}
+    >
+      <Workspace />
+    </motion.div>
+  </motion.div>
+        
+        {/* AI Assistant */}
+        <AnimatePresence>
           {isAssistantActive && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            <motion.div 
+              className="w-80 border-l border-white/10"
+              style={{ background: `rgba(15, 15, 26, 0.5)`, backdropFilter: 'blur(10px)' }}
+              initial={{ x: 80, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 80, opacity: 0 }}
+              transition={{ duration: 0.3 }}
             >
-              <AIAssistant onClose={() => toggleAssistant(false)} />
+              <AIAssistant />
             </motion.div>
           )}
-        </div>
-        
-        {/* Barra laterale (opzionale, solo se non è in modalità mobile) */}
-        <div className="hidden lg:block w-80 border-l border-white/10 p-4 overflow-y-auto">
-          {/* Upgrade banner per utenti free */}
-          {subscription.plan === 'FREE' && (
-            <div className="glass-panel p-4 rounded-lg mb-4 bg-gradient-to-br from-primary/20 to-secondary/20">
-              <h3 className="font-medium mb-2">Passa a Premium</h3>
-              <p className="text-sm text-white/70 mb-3">
-                Sblocca tutte le funzionalità avanzate e ottieni più spazio di archiviazione.
-              </p>
-              <Link 
-                href="/dashboard/subscription"
-                className="px-3 py-1.5 text-sm rounded-md bg-primary hover:bg-primary-dark transition-colors inline-flex items-center gap-1.5"
-              >
-                <FiCreditCard size={14} />
-                <span>Vedi piani</span>
-              </Link>
-            </div>
-          )}
-          
-          {/* Statistiche utilizzo e altri widget laterali */}
-          {/* ... */}
-        </div>
+        </AnimatePresence>
       </div>
       
-      {/* Footer con info e status */}
-      <footer className="h-8 border-t border-white/10 bg-surface-dark flex items-center justify-between px-4 text-xs text-white/60">
-        <div>Jarvis Web OS • v0.1.0</div>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500"></div>
-          <span>Tutti i sistemi operativi</span>
-          <Link 
-            href="/dashboard/subscription" 
-            className="ml-2 px-1.5 py-0.5 rounded bg-surface-light hover:bg-surface transition-colors"
-          >
-            {subscription.isPremium ? 'Premium' : 'Free'}
-          </Link>
-        </div>
-      </footer>
-      
-      {/* Notificatore limiti (fluttuante) */}
-      <UsageLimitsNotifier />
-    </main>
-  )
-}
-
-// Schermata di caricamento
-function LoadingScreen() {
-  return (
-    <div className="h-screen w-screen bg-background flex flex-col items-center justify-center">
-      <div className="relative">
-        <div className="w-24 h-24 rounded-full border-2 border-primary animate-pulse-slow"></div>
-        <div className="w-24 h-24 rounded-full border-2 border-primary absolute inset-0 pulse-ring"></div>
-        <div className="absolute inset-0 flex items-center justify-center text-primary font-mono">
-          JARVIS
-        </div>
-      </div>
-      <p className="mt-8 text-white/70 font-mono">Inizializzazione sistemi...</p>
+      {/* Command Bar (invisibile fino all'attivazione) */}
+      <CommandBar />
     </div>
   )
 }
