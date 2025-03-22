@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { FiSend, FiCpu, FiX, FiCode, FiClipboard, FiCheck } from 'react-icons/fi'
 import { toast } from 'sonner'
 import codeAssistantService, { CodeRequest } from '@/lib/services/codeAssistantService';
-
+import { useSession } from 'next-auth/react'
 
 // Modello predefinito di OpenAI
 const DEFAULT_MODEL = 'gpt-4'
@@ -28,7 +28,7 @@ export default function CodeAssistant({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const promptInputRef = useRef<HTMLTextAreaElement>(null)
   const [copiedToClipboard, setCopiedToClipboard] = useState(false)
-
+  const { data: session } = useSession()
   // Auto-scroll ai messaggi più recenti
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -59,6 +59,9 @@ export default function CodeAssistant({
     setIsProcessing(true);
     
     try {
+      if (session?.user?.id) {
+        sessionStorage.setItem('userId', session.user.id);
+      }
       const request: CodeRequest = {
         type: 'GENERATE', // Puoi modificare questo in base al contesto
         language,

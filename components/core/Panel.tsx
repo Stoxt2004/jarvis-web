@@ -20,6 +20,7 @@ const PanelComponents = {
   terminal: dynamic(() => import('@/components/core/panels/TerminalPanel')),
   notes: dynamic(() => import('@/components/core/panels/NotesPanel')),
   dashboard: dynamic(() => import('@/components/core/panels/DashboardPanel')),
+  calendar: dynamic(() => import('@/components/panels/CalendarPanel/CalendarPanel')), 
 }
 
 interface PanelProps {

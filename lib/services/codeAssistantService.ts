@@ -49,6 +49,7 @@ const getOpenAIClient = (): OpenAI => {
  * Genera o modifica codice in base alla richiesta dell'utente
  */
 export async function processCodeRequest(request: CodeRequest): Promise<CodeResponse> {
+  
   try {
     const openai = getOpenAIClient();
     
@@ -67,7 +68,13 @@ export async function processCodeRequest(request: CodeRequest): Promise<CodeResp
       temperature: 0.3,
     });
     
-    
+    const userId = sessionStorage.getItem('userId') || 'anonymous-user';
+    await logAIRequest(
+      userId,
+      'code_completion',
+      completion.usage?.total_tokens || 0,
+      true
+    );
     const responseText = completion.choices[0].message.content || '';
     
     // Estrai il codice e la spiegazione dalla risposta
@@ -194,6 +201,14 @@ export async function analyzeCode(code: string, language: string): Promise<strin
       max_tokens: 500
     });
     
+    const userId = sessionStorage.getItem('userId') || 'anonymous-user';
+  await logAIRequest(
+    userId,
+    'code_completion',
+    completion.usage?.total_tokens || 0,
+    true
+  );
+
     const responseText = completion.choices[0].message.content || '';
     
     // Estrai i suggerimenti come array
@@ -244,6 +259,14 @@ export async function getCodeCompletion(
       temperature: 0.2,
       max_tokens: 100
     });
+
+    const userId = sessionStorage.getItem('userId') || 'anonymous-user';
+  await logAIRequest(
+    userId,
+    'code_completion',
+    completion.usage?.total_tokens || 0,
+    true
+  );
     
     return completion.choices[0].message.content || '';
     

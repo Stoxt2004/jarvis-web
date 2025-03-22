@@ -19,11 +19,12 @@ export async function GET(request: NextRequest) {
         userId: session.user.id,
         type: { not: 'folder' } // Escludiamo le cartelle dal calcolo
       },
-      select: { size: true }
+      select: { size: true, name: true } // Aggiungi name per il debug
     });
     
     // Calcola la dimensione totale in bytes
     const totalSizeInBytes = files.reduce((total, file) => total + (file.size || 0), 0);
+    console.log('Dimensione totale in bytes:', totalSizeInBytes);
     // Converti in GB
     const storageUsedGB = totalSizeInBytes / (1024 * 1024 * 1024);
     
@@ -45,9 +46,12 @@ export async function GET(request: NextRequest) {
       }
     });
     
+    console.log('Files trovati:', files.length);
+    console.log('Files con dimensione:', files.filter(f => f.size && f.size > 0).length);
     // Ottieni i limiti del piano
     const userPlan = session.user.plan as 'FREE' | 'PREMIUM' | 'TEAM';
     const planLimits = getPlanLimits(userPlan);
+    
     
     return NextResponse.json({
       storage: parseFloat(storageUsedGB.toFixed(2)),

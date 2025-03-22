@@ -29,6 +29,9 @@ export class FileStorageService {
     path: string;
     parentId?: string;
   }): Promise<DbFile> {
+    // Assicurati che size sia sempre un numero
+    const finalSize = size || 0;
+  
     // Controlla se esiste già un file con lo stesso path nello stesso workspace
     const existingFile = await prisma.file.findFirst({
       where: {
@@ -37,7 +40,7 @@ export class FileStorageService {
         path,
       },
     });
-
+  
     if (existingFile) {
       // Se il file esiste, aggiornalo
       return prisma.file.update({
@@ -45,19 +48,19 @@ export class FileStorageService {
         data: {
           name,
           type,
-          size,
+          size: finalSize, // Usa il valore garantito qui
           content,
           updatedAt: new Date(),
         },
       });
     }
-
+  
     // Se il file non esiste, crealo
     return prisma.file.create({
       data: {
         name,
         type,
-        size,
+        size: finalSize, // E anche qui
         path,
         content,
         parentId,

@@ -264,8 +264,13 @@ export default function Dashboard() {
         <AnimatePresence>
           {isAssistantActive && (
             <motion.div 
-              className="w-80 border-l border-white/10"
-              style={{ background: `rgba(15, 15, 26, 0.5)`, backdropFilter: 'blur(10px)' }}
+            className="w-80 border-l border-white/10 flex flex-col overflow-hidden"
+  style={{ 
+    background: `rgba(15, 15, 26, 0.5)`,
+    backdropFilter: 'blur(10px)',
+    height: 'calc(100vh - 64px)', // altezza fissa sotto header
+    maxHeight: 'calc(100vh - 64px)',
+  }}
               initial={{ x: 80, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 80, opacity: 0 }}

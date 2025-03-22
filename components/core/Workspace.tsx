@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FiPlus, FiGrid, FiBriefcase, FiCode, FiFolder, FiTerminal, FiFileText } from 'react-icons/fi'
+import { FiPlus, FiGrid, FiBriefcase, FiCode, FiFolder, FiTerminal, FiFileText, FiGlobe, FiCalendar } from 'react-icons/fi'
 import Panel from './Panel'
 import { useWorkspaceStore, PanelType } from '@/lib/store/workspaceStore'
 import { useSubscription } from '@/hooks/useSubscription';
@@ -82,8 +82,13 @@ export default function Workspace() {
         position: { x: 220, y: 220 },
         size: { width: 800, height: 500 },
       },
+      calendar: {  // Aggiungi questa configurazione
+        title: 'Calendario',
+        position: { x: 240, y: 240 },
+        size: { width: 800, height: 600 },
+      },
     }
-
+    
     const defaults = panelDefaults[type]
     addPanel({
       type,
@@ -93,13 +98,15 @@ export default function Workspace() {
 
   // Icone per i diversi tipi di app
   const appIcons = {
-    browser: <FiGrid />,
+    browser: <FiGlobe />,
     editor: <FiCode />,
     fileManager: <FiFolder />,
     terminal: <FiTerminal />,
     notes: <FiFileText />,
-    dashboard: <FiBriefcase />
+    dashboard: <FiGrid />,
+    calendar: <FiCalendar />,  // Aggiungi questa riga (importa anche FiCalendar)
   }
+  
 
   return (
     <div className="relative h-full">
@@ -123,7 +130,7 @@ export default function Workspace() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.7 }}
       >
-        {(['browser', 'editor', 'fileManager', 'terminal', 'notes'] as PanelType[]).map((type) => (
+        {(['browser', 'editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
           <motion.button
             key={type}
             className="p-3 rounded-full"

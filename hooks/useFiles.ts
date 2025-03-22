@@ -301,7 +301,7 @@ export function useFiles() {
   ): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
-    
+    const size = file.size;
     try {
       // Determina il percorso in base al parent
       let parentPath = '/';
@@ -324,13 +324,17 @@ export function useFiles() {
       
       if (textExtensions.includes(extension)) {
         content = await readFileContent(file);
+      } else {
+        // Per file binari, imposta una nota che indica la presenza di contenuto binario
+        // o converti in base64 per memorizzazione nel database
+        content = '[Binary content]'; // Oppure memorizza un indicatore
       }
       
       // Crea un nuovo file
       const fileData = {
         name: file.name,
         type: extension || file.type,
-        size: file.size,
+        size: file.size, // Questa dovrebbe essere la dimensione effettiva del file
         path,
         content,
         parentId,
