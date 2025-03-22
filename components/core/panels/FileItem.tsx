@@ -1,24 +1,20 @@
-// components/core/panels/FileItem.tsx (versione completa)
+// components/core/panels/FileItem.tsx
 import React, { useState } from 'react';
-import { FiFolder, FiFile, FiEdit2, FiTrash2, FiStar } from 'react-icons/fi';
+import { FiFolder, FiFile, FiStar } from 'react-icons/fi';
 import { useDragDropStore } from '@/lib/store/dragDropStore';
 import { toast } from 'sonner';
+import { useFiles, FileItem as FileItemType } from '@/hooks/useFiles';
 
+// Definizione esplicita di FileItemProps
 interface FileItemProps {
-  file: {
-    id: string;
-    name: string;
-    type: string;
-    size?: number;
-    content?: string;
-    isPublic?: boolean;
-    updatedAt: Date;
-  };
+  file: FileItemType;
   isSelected: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onDoubleClick: () => void;
   onContextMenu: (e: React.MouseEvent) => void;
   panelId: string;
+  onFileDropped?: (fileId: string, targetFolderId: string) => void;
+  icon?: React.ReactNode;
 }
 
 export default function FileItem({ 
@@ -27,12 +23,16 @@ export default function FileItem({
   onSelect, 
   onDoubleClick, 
   onContextMenu,
-  panelId
+  panelId,
+  onFileDropped,
+  icon
 }: FileItemProps) {
   const { startDrag, endDrag } = useDragDropStore();
   const [isDragging, setIsDragging] = useState(false);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const { moveFile } = useFiles(); // Assicurati che moveFile sia implementato in useFiles
   
-  // Formatta la dimensione del file
+  // Formatta la dimensione del file (implementata localmente)
   const formatFileSize = (bytes?: number) => {
     if (bytes === undefined) return '';
     
@@ -42,7 +42,7 @@ export default function FileItem({
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   };
   
-  // Ottiene l'icona appropriata per il tipo di file
+  // Ottiene l'icona appropriata per il tipo di file (implementata localmente)
   const getFileIcon = () => {
     if (file.type === 'folder') {
       return <FiFolder size={24} className="text-blue-500" />;
@@ -80,13 +80,6 @@ export default function FileItem({
         return <FiFile size={24} className="text-amber-500" />;
       case 'py':
         return <FiFile size={24} className="text-blue-500" />;
-      case 'java':
-        return <FiFile size={24} className="text-orange-700" />;
-      case 'c':
-      case 'cpp':
-        return <FiFile size={24} className="text-blue-700" />;
-      case 'md':
-        return <FiFile size={24} className="text-sky-500" />;
       default:
         return <FiFile size={24} />;
     }
@@ -96,8 +89,8 @@ export default function FileItem({
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     // Solo i file (non le cartelle) possono essere draggati
     if (file.type === 'folder') {
-      e.preventDefault();
-      return;
+      // In questa versione, permettiamo anche alle cartelle di essere trascinate
+      // ma non per essere aperte in un editor, bensì per altre operazioni
     }
     
     console.log('Drag start:', file.name);
@@ -119,36 +112,6 @@ export default function FileItem({
       
       // Imposta l'effetto di trascinamento
       e.dataTransfer.effectAllowed = 'copy';
-      
-      // Crea un'immagine di trascinamento personalizzata per un feedback visivo
-      const dragImage = document.createElement('div');
-      dragImage.style.position = 'absolute';
-      dragImage.style.width = '150px';
-      dragImage.style.height = '40px';
-      dragImage.style.backgroundColor = '#1A1A2E';
-      dragImage.style.border = '1px solid #A78BFA';
-      dragImage.style.borderRadius = '4px';
-      dragImage.style.padding = '8px';
-      dragImage.style.display = 'flex';
-      dragImage.style.alignItems = 'center';
-      dragImage.style.justifyContent = 'center';
-      dragImage.style.color = 'white';
-      dragImage.style.fontWeight = 'bold';
-      dragImage.style.pointerEvents = 'none';
-      dragImage.textContent = file.name;
-      
-      document.body.appendChild(dragImage);
-      dragImage.style.top = '-1000px'; // Nascondiamo fuori schermo
-      
-      // Imposta l'immagine di trascinamento
-      e.dataTransfer.setDragImage(dragImage, 75, 20);
-      
-      // Rimuovi l'elemento dopo un breve periodo
-      setTimeout(() => {
-        if (dragImage.parentNode) {
-          document.body.removeChild(dragImage);
-        }
-      }, 100);
       
       // Notifica lo store del drag & drop
       startDrag(file.id, file.name, file.type, file.content, panelId);
@@ -182,11 +145,75 @@ export default function FileItem({
     endDrag();
   };
   
-  // Previeni il drag durante l'edit o altre operazioni
-  const preventDragIfNeeded = (e: React.DragEvent<HTMLDivElement>) => {
+  // Nuove funzioni per gestire il drop sulle cartelle
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    // Accetta il drop solo se è una cartella e non è la stessa del file trascinato
     if (file.type === 'folder') {
       e.preventDefault();
       e.stopPropagation();
+      
+      // Permetti il drop solo se è un file differente
+      const data = e.dataTransfer.types.includes('application/json');
+      if (data) {
+        // Imposta l'effetto di drop
+        e.dataTransfer.dropEffect = 'move';
+        setIsDropTarget(true);
+      }
+    }
+  };
+  
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+  };
+  
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDropTarget(false);
+    
+    // Gestisci il drop solo se questo è una cartella
+    if (file.type !== 'folder') {
+      console.log('Drop ignorato - non è una cartella');
+      return;
+    }
+    
+    console.log('Drop su cartella:', file.name);
+    
+    const jsonData = e.dataTransfer.getData('application/json');
+    if (!jsonData) {
+      console.error('Nessun dato JSON trovato nel drop');
+      return;
+    }
+    
+    try {
+      const draggedFile = JSON.parse(jsonData);
+      console.log('Dati file trascinato:', draggedFile);
+      
+      // Non permettere di spostare una cartella dentro sé stessa o un file nella sua stessa posizione
+      if (draggedFile.fileId === file.id) {
+        toast.error("Non puoi spostare un elemento dentro sé stesso");
+        return;
+      }
+      
+      console.log(`Spostamento del file ${draggedFile.fileName} nella cartella ${file.name}`);
+      
+      // Esegui lo spostamento del file
+      const result = await moveFile(draggedFile.fileId, file.id);
+      
+      if (result) {
+        toast.success(`${draggedFile.fileName} spostato in ${file.name}`);
+        // Notifica il padre per aggiornare la lista dei file
+        if (onFileDropped) {
+          onFileDropped(draggedFile.fileId, file.id);
+        }
+      } else {
+        toast.error(`Impossibile spostare ${draggedFile.fileName}`);
+      }
+    } catch (error) {
+      console.error('Errore nello spostamento del file:', error);
+      toast.error('Errore nello spostamento del file');
     }
   };
   
@@ -195,18 +222,22 @@ export default function FileItem({
       className={`p-3 rounded-lg cursor-pointer relative ${
         isSelected 
           ? 'bg-primary/20 ring-1 ring-primary' 
-          : 'hover:bg-white/5'
+          : isDropTarget 
+            ? 'bg-green-500/20 ring-1 ring-green-500' 
+            : 'hover:bg-white/5'
       } ${isDragging ? 'opacity-50' : 'opacity-100'}`}
       onClick={onSelect}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
-      draggable={file.type !== 'folder'}
+      draggable={true} // Rendi tutti gli elementi trascinabili
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={preventDragIfNeeded}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       style={{
         transition: 'transform 0.2s, opacity 0.2s, background-color 0.2s',
-        transform: isDragging ? 'scale(0.95)' : 'scale(1)'
+        transform: isDragging ? 'scale(0.95)' : isDropTarget ? 'scale(1.05)' : 'scale(1)'
       }}
     >
       {file.isPublic && (
@@ -217,7 +248,7 @@ export default function FileItem({
       
       <div className="flex flex-col items-center text-center">
         <div className="w-12 h-12 flex items-center justify-center mb-2">
-          {getFileIcon()}
+          {icon || getFileIcon()}
         </div>
         
         <div className="truncate w-full text-sm font-medium">

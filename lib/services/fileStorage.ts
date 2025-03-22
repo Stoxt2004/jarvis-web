@@ -1,4 +1,5 @@
 // src/lib/services/fileStorage.ts
+import { FileItem } from '@/hooks/useFiles';
 import { prisma } from '@/lib/auth/prisma-adapter';
 import { File as DbFile } from '@prisma/client';
 
@@ -158,6 +159,8 @@ export class FileStorageService {
       }
     }
 
+    
+
     // Elimina il file
     await prisma.file.delete({
       where: {
@@ -165,7 +168,54 @@ export class FileStorageService {
       },
     });
   }
-
+  
+  static async moveFile(fileId: string, targetFolderId: string, userId: string): Promise<FileItem> {
+    // Verifica che l'utente sia il proprietario sia del file che della cartella
+    const file = await prisma.file.findFirst({
+      where: { id: fileId, userId }
+    });
+    
+    if (!file) {
+      throw new Error("File non trovato o non autorizzato");
+    }
+    
+    const targetFolder = await prisma.file.findFirst({
+      where: { id: targetFolderId, type: 'folder', userId }
+    });
+    
+    if (!targetFolder) {
+      throw new Error("Cartella di destinazione non trovata o non autorizzata");
+    }
+    
+    // Costruisci il nuovo percorso del file
+    const newPath = targetFolder.path === '/' 
+      ? `/${targetFolder.name}/${file.name}` 
+      : `${targetFolder.path}/${file.name}`;
+    
+    // Aggiorna il file nel database
+    const updatedFile = await prisma.file.update({
+      where: { id: fileId },
+      data: {
+        parentId: targetFolderId,
+        path: newPath
+      }
+    });
+    
+    // Converti il risultato in FileItem
+    return {
+      id: updatedFile.id,
+      name: updatedFile.name,
+      type: updatedFile.type,
+      path: updatedFile.path,
+      size: updatedFile.size,
+      createdAt: updatedFile.createdAt,
+      updatedAt: updatedFile.updatedAt,
+      userId: updatedFile.userId,
+      parentId: updatedFile.parentId || undefined, // Converti null in undefined
+      isPublic: updatedFile.isPublic || false,
+      content: updatedFile.content || undefined
+    };
+  }
   /**
    * Rinomina un file
    */

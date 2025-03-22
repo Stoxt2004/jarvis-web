@@ -749,6 +749,12 @@ const getFileIcon = (item: FileItem) => {
     toast.success(`${selectedItems.length} elementi ${cut ? 'tagliati' : 'copiati'} negli appunti`);
     setShowContextMenu(false);
   };
+
+  const handleFileDropped = (fileId: string, targetFolderId: string) => {
+    console.log(`File ${fileId} spostato nella cartella ${targetFolderId}, ricarico la vista`);
+    // Ricarica la lista dei file per riflettere i cambiamenti
+    loadFiles();
+  };
   
   // Incolla gli elementi dagli appunti (simulato)
   const handlePaste = async () => {
@@ -927,16 +933,18 @@ const getFileIcon = (item: FileItem) => {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {filteredItems.map((item) => (
-              <FileItemComponent
-                key={item.id}
-                file={item}
-                isSelected={selectedItems.includes(item.id)}
-                onSelect={(e) => handleItemSelect(item, e)}
-                onDoubleClick={() => handleItemDoubleClick(item)}
-                onContextMenu={(e) => handleContextMenu(e, item.id)}
-                panelId={panel.id}
-              />
-            ))}
+  <FileItemComponent
+    key={item.id}
+    file={item}
+    isSelected={selectedItems.includes(item.id)}
+    onSelect={(e: React.MouseEvent) => handleItemSelect(item, e)}
+    onDoubleClick={() => handleItemDoubleClick(item)}
+    onContextMenu={(e: React.MouseEvent) => handleContextMenu(e, item.id)}
+    onFileDropped={handleFileDropped} // Aggiungi questa prop
+    panelId={panel.id}
+    icon={getFileIcon(item)}
+  />
+))}
           </div>
         ) : (
           <div className="rounded-lg border border-white/10 overflow-hidden">

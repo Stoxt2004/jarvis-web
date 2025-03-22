@@ -101,6 +101,45 @@ export const useFiles = () => {
       setIsLoading(false);
     }
   };
+
+  const moveFile = async (fileId: string, targetFolderId: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log(`Chiamata API per spostare il file ${fileId} nella cartella ${targetFolderId}`);
+      
+      const response = await fetch('/api/files/move', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileId,
+          targetFolderId
+        }),
+      });
+      
+      // Log per debug
+      console.log('Risposta API:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`Errore (${response.status}): ${errorData.message || response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('Spostamento completato con successo:', result);
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      console.error('Errore nello spostamento del file:', errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Crea una nuova cartella
   const createFolder = async (name: string, parentId?: string): Promise<FileItem | null> => {
@@ -519,6 +558,7 @@ export const useFiles = () => {
     getFolderTree,
     toggleFileVisibility,
     copyContentBetweenEditors,
-    analyzeMultipleFiles
+    analyzeMultipleFiles,
+    moveFile
   };
 };

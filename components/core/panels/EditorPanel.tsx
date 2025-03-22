@@ -77,19 +77,32 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   const activeFile = fileTabs.find(tab => tab.id === activeFileId) || fileTabs[0];
   const { saveFile } = useFiles();
   const { addModifiedFileId, markDataAsChanged } = useFileSystemStore();
+  const processedTimestamps = useRef(new Set<number>());
   // Inizializza la history al primo render
   useEffect(() => {
     if (!panel.content || !panel.content.timestamp) return;
     
     const { fileName, language, value, fileId, timestamp } = panel.content;
-    console.log('Editor panel ha ricevuto un nuovo file via timestamp:', timestamp);
     
-    // Verifica se esiste già una tab con questo file
+    // Verifica se questo timestamp è già stato elaborato
+    if (processedTimestamps.current.has(timestamp)) {
+      console.log('Timestamp già elaborato, evito duplicazione:', timestamp);
+      return;
+    }
+    
+    console.log('Elaborazione nuovo contenuto:', { fileName, fileId, timestamp });
+    
+    // Aggiungi il timestamp all'insieme di quelli elaborati
+    processedTimestamps.current.add(timestamp);
+    
+    // Cerca se esiste già una tab per questo file
     const existingTabIndex = fileTabs.findIndex(tab => 
-      (fileId && tab.fileId === fileId) || (!fileId && tab.name === fileName)
+      (fileId && tab.fileId === fileId) || 
+      (!fileId && tab.name === fileName)
     );
     
     if (existingTabIndex >= 0) {
+      console.log('Aggiornamento tab esistente:', fileTabs[existingTabIndex].id);
       // Aggiorna la tab esistente
       const updatedTabs = [...fileTabs];
       updatedTabs[existingTabIndex] = {
@@ -103,6 +116,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       setFileTabs(updatedTabs);
       setActiveFileId(updatedTabs[existingTabIndex].id);
     } else {
+      console.log('Creazione nuova tab per:', fileName);
       // Crea una nuova tab
       const newTab: FileTab = {
         id: 'file-' + nanoid(),
@@ -113,21 +127,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
         fileId
       };
       
-      // Quando aggiungi una nuova tab
-      setFileTabs(prev => {
-        // Verifica se esiste già una tab con questo fileId o nome
-        const isDuplicate = prev.some(tab => 
-          (fileId && tab.fileId === fileId) || (!fileId && tab.name === fileName)
-        );
-        
-        if (isDuplicate) {
-          console.log('Tentativo di creare una tab duplicata evitato');
-          return prev; // Non aggiungere la tab se è un duplicato
-        }
-        
-        return [...prev, newTab]; // Aggiungi la nuova tab
-      });
-      
+      setFileTabs(prev => [...prev, newTab]);
       setActiveFileId(newTab.id);
       
       // Inizializza la history per il nuovo file
@@ -136,7 +136,8 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
         [newTab.id]: { past: [], future: [] }
       }));
     }
-  }, [panel.content?.timestamp]);
+    
+  }, [panel.content?.timestamp]); 
   
   // Auto-resize dell'area di testo
   useEffect(() => {

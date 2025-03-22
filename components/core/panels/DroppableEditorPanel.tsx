@@ -20,7 +20,7 @@ export function DroppableEditorPanel(props: { panel: Panel }) {
   // Funzione che gestisce il drop di un file
   const handleFileDrop = async (file: FileItem) => {
     console.log('File ricevuto nell\'editor per apertura:', file);
-    
+    const uniqueTimestamp = Date.now();
     // Determina il linguaggio dal tipo di file
     const extension = file.name.split('.').pop()?.toLowerCase() || '';
     const languageMap: Record<string, string> = {
@@ -68,7 +68,13 @@ export function DroppableEditorPanel(props: { panel: Panel }) {
     console.log('Aggiornando il contenuto del pannello con:', content);
     
     // Aggiorna il contenuto del pannello
-    updatePanelContent(props.panel.id, content);
+    updatePanelContent(props.panel.id, {
+      fileName: file.name,
+      language,
+      value: fileContent || '',
+      fileId: file.id,
+      timestamp: uniqueTimestamp // Assicurati che sia univoco
+    });
     
     // Segnala che il file è stato aperto
     if (file.id) {
