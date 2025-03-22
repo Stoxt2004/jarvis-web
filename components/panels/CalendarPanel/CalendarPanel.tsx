@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import { useSession } from 'next-auth/react';
 import EventForm from './EventForm';
 import EventDetails from './EventDetails';
 import CalendarToolbar from './CalendarToolbar';
@@ -11,6 +12,7 @@ import ReminderModal from './ReminderModal';
 import { saveEvent, getEvents, deleteEvent } from '@/lib/services/calendarService';
 import { Panel as PanelType } from '@/lib/store/workspaceStore';
 import { CalendarEvent, CalendarView } from '@/types/calendar';
+import { toast } from 'sonner';
 
 // Configurazione del localizzatore per le date
 const localizer = momentLocalizer(moment);
@@ -43,33 +45,46 @@ interface CalendarPanelProps {
 }
 
 const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
+  const { data: session } = useSession();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isAddingEvent, setIsAddingEvent] = useState<boolean>(false);
   const [view, setView] = useState<CalendarView>('month');
   const [date, setDate] = useState<Date>(new Date());
   const [showReminderModal, setShowReminderModal] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Recupera gli eventi all'avvio
+  // Recupera gli eventi all'avvio e quando cambia la sessione utente
   useEffect(() => {
     const fetchEvents = async () => {
-      const fetchedEvents = await getEvents();
-      setEvents(fetchedEvents);
+      if (session?.user?.id) {
+        setIsLoading(true);
+        try {
+          // Usa il workspaceId dal content del panel, se disponibile
+          const workspaceId = panel.content?.workspaceId || undefined;
+          const fetchedEvents = await getEvents(workspaceId);
+          setEvents(fetchedEvents);
+        } catch (error) {
+          console.error("Errore nel recupero degli eventi:", error);
+          toast.error("Impossibile caricare gli eventi");
+        } finally {
+          setIsLoading(false);
+        }
+      }
     };
     
     fetchEvents();
-  }, []);
+  }, [session, panel.content]);
   
   // Aggiorna il titolo del pannello quando cambia la vista
   useEffect(() => {
-    if (panel) {
+    if (panel && panel.id) {
       const viewName = view.charAt(0).toUpperCase() + view.slice(1);
-      // Utilizza l'API di workspaceStore per aggiornare il titolo
-      // Assumendo che panel abbia un ID e che ci sia una funzione per aggiornare il titolo
-      if (panel.id) {
-        // Qui dovresti usare la funzione appropriata del tuo store
-        // Ad esempio: updatePanelTitle(panel.id, `Calendario - Vista ${viewName}`);
-      }
+      // Qui dovresti utilizzare la funzione appropriata del tuo store per aggiornare il titolo
+      // Ad esempio: updatePanelTitle(panel.id, `Calendario - Vista ${viewName}`);
+      
+      // Poiché non abbiamo accesso diretto alla funzione updatePanelTitle,
+      // questa parte andrà implementata quando sarà disponibile nel componente
     }
   }, [view, panel]);
 
@@ -79,24 +94,42 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
   };
 
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
-    setSelectedEvent(null);
-    setIsAddingEvent(true);
-    // Pre-popola il form con l'orario selezionato
-    setSelectedEvent({ 
-      start, 
-      end,
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per creare eventi");
+      return;
+    }
+    
+    setSelectedEvent({
+      id: undefined, // Sarà generato dal server
       title: '',
       description: '',
       location: '',
+      start,
+      end,
       reminder: false,
-      reminderTime: 15 // minuti prima
+      reminderTime: 15,
+      // Includi il workspaceId dal panel se disponibile
+      workspaceId: panel.content?.workspaceId,
     });
+    setIsAddingEvent(true);
   };
 
   const handleSaveEvent = async (eventData: CalendarEvent) => {
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per salvare eventi");
+      return;
+    }
+    
     try {
-      const savedEvent = await saveEvent(eventData);
+      // Assicurati che il workspaceId sia incluso
+      const eventToSave = {
+        ...eventData,
+        workspaceId: panel.content?.workspaceId || eventData.workspaceId
+      };
       
+      const savedEvent = await saveEvent(eventToSave);
+      
+      // Aggiorna la lista eventi locale
       if (eventData.id) {
         // Aggiornamento evento esistente
         setEvents(events.map(e => e.id === eventData.id ? savedEvent : e));
@@ -114,18 +147,23 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
       }
     } catch (error) {
       console.error('Errore nel salvare l\'evento:', error);
-      // Qui potresti aggiungere una notifica di errore
+      toast.error("Impossibile salvare l'evento");
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per eliminare eventi");
+      return;
+    }
+    
     try {
       await deleteEvent(eventId);
       setEvents(events.filter(e => e.id !== eventId));
       setSelectedEvent(null);
     } catch (error) {
       console.error('Errore nell\'eliminare l\'evento:', error);
-      // Qui potresti aggiungere una notifica di errore
+      toast.error("Impossibile eliminare l'evento");
     }
   };
 
@@ -154,6 +192,17 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
     setDate(newDate);
   };
 
+  // Mostra un indicatore di caricamento
+  if (isLoading) {
+    return (
+      <div style={styles.calendarPanel}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div>Caricamento calendario...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.calendarPanel}>
       <CalendarToolbar 
@@ -162,15 +211,22 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
         onViewChange={handleViewChange}
         onNavigate={handleNavigate}
         onAddEvent={() => {
+          if (!session?.user?.id) {
+            toast.error("Devi effettuare l'accesso per creare eventi");
+            return;
+          }
+          
           setIsAddingEvent(true);
           setSelectedEvent({
-            start: new Date(),
-            end: new Date(new Date().setHours(new Date().getHours() + 1)),
+            id: undefined,
             title: '',
             description: '',
             location: '',
+            start: new Date(),
+            end: new Date(new Date().setHours(new Date().getHours() + 1)),
             reminder: false,
-            reminderTime: 15
+            reminderTime: 15,
+            workspaceId: panel.content?.workspaceId
           });
         }}
       />
@@ -186,13 +242,16 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
           date={date}
           onView={(newView: View) => handleViewChange(newView as CalendarView)}
           onNavigate={handleNavigate}
-          selectable
+          selectable={!!session?.user?.id} // Solo gli utenti autenticati possono selezionare slot
           onSelectEvent={handleSelectEvent}
           onSelectSlot={handleSelectSlot}
           popup
           components={{
             event: (props: any) => (
-              <div style={styles.calendarEvent}>
+              <div style={{
+                ...styles.calendarEvent,
+                backgroundColor: props.event.color || '#A78BFA'
+              }}>
                 <span>{props.title}</span>
               </div>
             )
@@ -215,7 +274,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
         <EventDetails 
           event={selectedEvent}
           onEdit={() => setIsAddingEvent(true)}
-          onDelete={() => handleDeleteEvent(selectedEvent.id!)}
+          onDelete={() => selectedEvent.id && handleDeleteEvent(selectedEvent.id)}
           onClose={() => setSelectedEvent(null)}
         />
       )}

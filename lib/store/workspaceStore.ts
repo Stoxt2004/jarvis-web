@@ -1,167 +1,202 @@
 // src/lib/store/workspaceStore.ts
-import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
-import { hasAccessToFeature } from '@/lib/services/authorizationService';
-import { useSubscription } from '@/hooks/useSubscription';
-import { toast } from 'sonner';
-// Tipi di pannello disponibili
-export type PanelType = 'browser' | 'editor' | 'fileManager' | 'terminal' | 'notes' | 'dashboard'
+// Aggiornamento dello store di workspace per supportare l'integrazione tra pannelli
 
+import { create } from 'zustand';
+import { nanoid } from 'nanoid';
+
+// Tipi di pannello disponibili nell'applicazione
+export type PanelType = 'browser' | 'editor' | 'fileManager' | 'terminal' | 'notes' | 'dashboard' | 'calendar';
+
+// Interfaccia del pannello
 export interface Panel {
-  id: string
-  type: PanelType
-  title: string
-  content?: any
-  position: { x: number; y: number }
-  size: { width: number; height: number }
-  zIndex: number
-  isMaximized: boolean
-  isMinimized: boolean
+  id: string;
+  type: PanelType;
+  title: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  zIndex: number;
+  isMaximized: boolean;
+  isMinimized: boolean;
+  content?: any; // Contenuto specifico in base al tipo di pannello
 }
 
-// Nuovo tipo per l'input addPanel, senza le proprietà generate automaticamente
-type PanelInput = Omit<Panel, 'id' | 'zIndex' | 'isMaximized' | 'isMinimized'>
-
+// Interfaccia dello stato del workspace
 interface WorkspaceState {
-  panels: Panel[]
-  activePanel: string | null
+  panels: Panel[];
+  activePanel: string | null;
+  nextZIndex: number;
   
-  // Azioni
-  addPanel: (panel: PanelInput) => string
-  removePanel: (id: string) => void
-  maximizePanel: (id: string) => void
-  minimizePanel: (id: string) => void
-  restorePanel: (id: string) => void
-  setActivePanel: (id: string) => void
-  updatePanelPosition: (id: string, position: { x: number; y: number }) => void
-  updatePanelSize: (id: string, size: { width: number; height: number }) => void
-  updatePanelContent: (id: string, content: any) => void
-  
+  // Azioni per gestire i pannelli
+  addPanel: (panelOptions: Omit<Panel, 'id' | 'zIndex' | 'isMaximized' | 'isMinimized'>) => void;
+  removePanel: (id: string) => void;
+  updatePanelContent: (id: string, content: any) => void;
+  updatePanelPosition: (id: string, position: { x: number; y: number }) => void;
+  updatePanelSize: (id: string, size: { width: number; height: number }) => void;
+  setActivePanel: (id: string | null) => void;
+  maximizePanel: (id: string) => void;
+  minimizePanel: (id: string) => void;
+  restorePanel: (id: string) => void;
+  syncPanels: (sourceId: string, targetId: string, field: 'content' | 'position' | 'size') => void; // Nuova funzione
 }
 
-export const useWorkspaceStore = create<WorkspaceState>()(
-  persist(
-    (set, get) => ({
-      panels: [],
-      activePanel: null,
+// Creazione dello store
+export const useWorkspaceStore = create<WorkspaceState>((set) => ({
+  panels: [],
+  activePanel: null,
+  nextZIndex: 1,
+  
+  // Aggiungi un nuovo pannello
+  addPanel: (panelOptions) => 
+    set((state) => {
+      const newPanel: Panel = {
+        id: nanoid(),
+        zIndex: state.nextZIndex,
+        isMaximized: false,
+        isMinimized: false,
+        ...panelOptions
+      };
       
-      addPanel: (panel) => {
-        const id = `panel-${Date.now()}`;
-        // Ottieni il massimo zIndex corrente
-        const currentPanels = get().panels;
-        const maxZIndex = currentPanels.length ? Math.max(...currentPanels.map(p => p.zIndex)) : 0;
-        
-        const newPanel: Panel = {
-          ...panel,
-          id,
-          zIndex: maxZIndex + 1, // Assicura che sia sempre sopra
-          isMaximized: false,
-          isMinimized: false,
-        }
-        
-        set((state) => ({
-          panels: [...state.panels, newPanel],
-          activePanel: id,
-        }))
-        
-        return id
-      },
-      
-      removePanel: (id) => {
-        set((state) => ({
-          panels: state.panels.filter((panel) => panel.id !== id),
-          activePanel: state.activePanel === id 
-            ? (state.panels.length > 1 
-                ? state.panels.find(p => p.id !== id)?.id ?? null 
-                : null) 
-            : state.activePanel
-        }))
-      },
-      
-      maximizePanel: (id) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, isMaximized: true, isMinimized: false } 
-              : panel
-          ),
-          activePanel: id,
-        }))
-      },
-      
-      minimizePanel: (id) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, isMinimized: true, isMaximized: false } 
-              : panel
-          ),
-          activePanel: state.activePanel === id 
-            ? (state.panels.find(p => p.id !== id && !p.isMinimized)?.id ?? null) 
-            : state.activePanel
-        }))
-      },
-      
-      restorePanel: (id) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, isMaximized: false, isMinimized: false } 
-              : panel
-          ),
-          activePanel: id,
-        }))
-      },
-      
-      setActivePanel: (id: string) => {
-        // Aggiorna lo zIndex per portare il pannello in primo piano
-        set((state) => {
-          // Trova il massimo zIndex corrente
-          const maxZIndex = Math.max(...state.panels.map(p => p.zIndex))
-          
-          return {
-            panels: state.panels.map((panel) => 
-              panel.id === id 
-                ? { ...panel, zIndex: maxZIndex + 1 } 
-                : panel
-            ),
-            activePanel: id,
-          }
-        })
-      },
-      
-      updatePanelPosition: (id, position) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, position } 
-              : panel
-          ),
-        }))
-      },
-      
-      updatePanelSize: (id, size) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, size } 
-              : panel
-          ),
-        }))
-      },
-      
-      updatePanelContent: (id, content) => {
-        set((state) => ({
-          panels: state.panels.map((panel) => 
-            panel.id === id 
-              ? { ...panel, content } 
-              : panel
-          ),
-        }))
-      },
+      return {
+        panels: [...state.panels, newPanel],
+        activePanel: newPanel.id,
+        nextZIndex: state.nextZIndex + 1
+      };
     }),
-    {
-      name: 'jarvis-workspace',
-    }
-  )
-)
+  
+  // Rimuovi un pannello esistente
+  removePanel: (id) =>
+    set((state) => ({
+      panels: state.panels.filter(panel => panel.id !== id),
+      activePanel: state.activePanel === id ? null : state.activePanel
+    })),
+  
+  // Aggiorna il contenuto del pannello
+  updatePanelContent: (id, content) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, content: { ...panel.content, ...content } }
+          : panel
+      )
+    })),
+  
+  // Aggiorna la posizione del pannello
+  updatePanelPosition: (id, position) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, position }
+          : panel
+      )
+    })),
+  
+  // Aggiorna la dimensione del pannello
+  updatePanelSize: (id, size) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, size }
+          : panel
+      )
+    })),
+  
+  // Imposta il pannello attivo
+  setActivePanel: (id) =>
+    set((state) => {
+      // Se il pannello è già attivo, non c'è bisogno di cambiare nulla
+      if (state.activePanel === id) return state;
+      
+      // Altrimenti, aggiorna l'indice z del pannello selezionato
+      return {
+        panels: state.panels.map(panel =>
+          panel.id === id
+            ? { ...panel, zIndex: state.nextZIndex }
+            : panel
+        ),
+        activePanel: id,
+        nextZIndex: state.nextZIndex + 1
+      };
+    }),
+  
+  // Massimizza un pannello
+  maximizePanel: (id) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, isMaximized: true, zIndex: state.nextZIndex }
+          : panel
+      ),
+      activePanel: id,
+      nextZIndex: state.nextZIndex + 1
+    })),
+  
+  // Minimizza un pannello
+  minimizePanel: (id) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, isMinimized: true }
+          : panel
+      ),
+      activePanel: state.activePanel === id ? null : state.activePanel
+    })),
+  
+  // Ripristina un pannello minimizzato o massimizzato
+  restorePanel: (id) =>
+    set((state) => ({
+      panels: state.panels.map(panel =>
+        panel.id === id
+          ? { ...panel, isMaximized: false, isMinimized: false, zIndex: state.nextZIndex }
+          : panel
+      ),
+      activePanel: id,
+      nextZIndex: state.nextZIndex + 1
+    })),
+    
+  // Sincronizza pannelli (nuova funzionalità per l'integrazione)
+  syncPanels: (sourceId, targetId, field) =>
+    set((state) => {
+      // Trova i pannelli sorgente e destinazione
+      const sourcePanel = state.panels.find(panel => panel.id === sourceId);
+      const targetPanel = state.panels.find(panel => panel.id === targetId);
+      
+      if (!sourcePanel || !targetPanel) return state;
+      
+      // Applica la sincronizzazione in base al campo
+      switch (field) {
+        case 'content':
+          // Per il contenuto, dobbiamo gestire diversi tipi di pannelli
+          // Per esempio, da editor a editor, da file manager a editor, ecc.
+          if (sourcePanel.type === 'editor' && targetPanel.type === 'editor') {
+            return {
+              panels: state.panels.map(panel => 
+                panel.id === targetId
+                  ? { ...panel, content: { ...panel.content, value: sourcePanel.content?.value } }
+                  : panel
+              )
+            };
+          }
+          break;
+          
+        case 'position':
+          return {
+            panels: state.panels.map(panel => 
+              panel.id === targetId
+                ? { ...panel, position: { ...sourcePanel.position } }
+                : panel
+            )
+          };
+          
+        case 'size':
+          return {
+            panels: state.panels.map(panel => 
+              panel.id === targetId
+                ? { ...panel, size: { ...sourcePanel.size } }
+                : panel
+            )
+          };
+      }
+      
+      return state;
+    }),
+}));

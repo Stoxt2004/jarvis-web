@@ -1,325 +1,424 @@
-// src/app/page.tsx
 "use client"
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import Link from 'next/link'
+import React, { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { FiPlus, FiSearch, FiX, FiFilter, FiGrid, FiList } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { Panel as PanelType } from '@/lib/store/workspaceStore';
+import { Note, getNotes, saveNote, deleteNote, createEmptyNote, getUniqueTags } from '@/lib/services/notesService';
+import NoteCard from '@/components/panels/NoteCard';
+import NoteEditor from '@/components/panels/NoteEditor';
 
-export default function Home() {
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  
-  // Gestisce l'accesso demo
-  const handleDemoAccess = () => {
-    setIsLoading(true)
-    
-    // Simuliamo un caricamento prima di reindirizzare alla dashboard
-    setTimeout(() => {
-      router.push('/dashboard')
-    }, 1500)
+// Stili consistenti con il tema dell'applicazione
+const styles = {
+  container: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    height: '100%',
+    backgroundColor: '#1A1A2E', // surface color
+    color: '#FFFFFF',
+    borderRadius: '8px',
+    overflow: 'hidden'
+  },
+  header: {
+    padding: '16px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+  },
+  searchBar: {
+    display: 'flex',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    flex: 1,
+    marginRight: '16px'
+  },
+  searchInput: {
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#FFFFFF',
+    flex: 1,
+    outline: 'none',
+    fontSize: '14px'
+  },
+  buttonGroup: {
+    display: 'flex',
+    gap: '8px'
+  },
+  contentArea: {
+    flex: 1,
+    padding: '16px',
+    overflowY: 'auto' as const
+  },
+  tagsContainer: {
+    display: 'flex',
+    gap: '8px',
+    flexWrap: 'wrap' as const,
+    marginBottom: '16px'
+  },
+  tag: {
+    padding: '4px 8px',
+    borderRadius: '4px',
+    fontSize: '12px',
+    cursor: 'pointer'
+  },
+  gridContainer: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+    gap: '16px'
+  },
+  listContainer: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px'
+  },
+  noNotesMessage: {
+    textAlign: 'center' as const,
+    marginTop: '32px',
+    color: 'rgba(255, 255, 255, 0.6)'
+  },
+  button: {
+    padding: '8px 12px',
+    borderRadius: '8px',
+    backgroundColor: '#A47864', // primary color
+    color: '#FFFFFF',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '14px'
+  },
+  iconButton: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    color: '#FFFFFF',
+    border: 'none',
+    cursor: 'pointer'
+  },
+  activeFilter: {
+    backgroundColor: '#A47864', // primary color
+    color: '#FFFFFF'
   }
-  
+};
+
+interface NotesPanelProps {
+  panel: PanelType;
+}
+
+const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
+  const { data: session } = useSession();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Recupera le note quando il componente viene montato
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (session?.user?.id) {
+        setIsLoading(true);
+        try {
+          // Usa il workspaceId dal content del panel, se disponibile
+          const workspaceId = panel.content?.workspaceId;
+          const fetchedNotes = await getNotes(workspaceId);
+          setNotes(fetchedNotes);
+          setFilteredNotes(fetchedNotes);
+          
+          // Recupera i tag disponibili
+          const tags = await getUniqueTags(workspaceId);
+          setAvailableTags(tags);
+        } catch (error) {
+          console.error("Errore nel recupero delle note:", error);
+          toast.error("Impossibile caricare le note");
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    fetchNotes();
+  }, [session, panel.content]);
+
+  // Filtra le note in base al termine di ricerca e al tag selezionato
+  useEffect(() => {
+    let filtered = [...notes];
+    
+    // Filtra per tag se selezionato
+    if (selectedTag) {
+      filtered = filtered.filter(note => note.tags.includes(selectedTag));
+    }
+    
+    // Filtra per termine di ricerca
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(note => 
+        note.title.toLowerCase().includes(term) || 
+        note.content.toLowerCase().includes(term)
+      );
+    }
+    
+    setFilteredNotes(filtered);
+  }, [notes, searchTerm, selectedTag]);
+
+  // Gestisce la creazione di una nuova nota
+  const handleCreateNote = () => {
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per creare note");
+      return;
+    }
+    
+    const newNote = createEmptyNote(panel.content?.workspaceId);
+    setSelectedNote(newNote);
+    setIsEditing(true);
+  };
+
+  // Gestisce il salvataggio di una nota
+  const handleSaveNote = async (note: Note) => {
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per salvare note");
+      return;
+    }
+    
+    try {
+      const savedNote = await saveNote(note);
+      
+      // Aggiorna la lista delle note
+      if (note.id) {
+        // Aggiornamento di una nota esistente
+        setNotes(notes.map(n => n.id === note.id ? savedNote : n));
+      } else {
+        // Aggiunta di una nuova nota
+        setNotes([savedNote, ...notes]);
+      }
+      
+      // Aggiorna la lista dei tag disponibili
+      const updatedTags = await getUniqueTags(panel.content?.workspaceId);
+      setAvailableTags(updatedTags);
+      
+      setIsEditing(false);
+      setSelectedNote(null);
+    } catch (error) {
+      console.error("Errore nel salvataggio della nota:", error);
+    }
+  };
+
+  // Gestisce l'eliminazione di una nota
+  const handleDeleteNote = async (noteId: string) => {
+    if (!session?.user?.id) {
+      toast.error("Devi effettuare l'accesso per eliminare note");
+      return;
+    }
+    
+    try {
+      await deleteNote(noteId);
+      
+      // Rimuovi la nota dalla lista
+      setNotes(notes.filter(note => note.id !== noteId));
+      
+      // Se la nota eliminata era selezionata, deselezionala
+      if (selectedNote?.id === noteId) {
+        setSelectedNote(null);
+        setIsEditing(false);
+      }
+      
+      // Aggiorna la lista dei tag disponibili
+      const updatedTags = await getUniqueTags(panel.content?.workspaceId);
+      setAvailableTags(updatedTags);
+    } catch (error) {
+      console.error("Errore nell'eliminazione della nota:", error);
+    }
+  };
+
+  // Gestisce il click su un tag
+  const handleTagClick = (tag: string) => {
+    if (selectedTag === tag) {
+      // Se il tag è già selezionato, deselezionalo
+      setSelectedTag(null);
+    } else {
+      // Altrimenti, selezionalo
+      setSelectedTag(tag);
+    }
+  };
+
+  // Gestisce il click su una nota
+  const handleNoteClick = (note: Note) => {
+    setSelectedNote(note);
+    setIsEditing(true);
+  };
+
+  // Mostra un indicatore di caricamento
+  if (isLoading) {
+    return (
+      <div style={styles.container}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div>Caricamento note...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se l'editor è aperto, mostra solo l'editor
+  if (isEditing && selectedNote) {
+    return (
+      <div style={styles.container}>
+        <NoteEditor 
+          note={selectedNote} 
+          onSave={handleSaveNote} 
+          onCancel={() => {
+            setIsEditing(false);
+            setSelectedNote(null);
+          }}
+          onDelete={selectedNote.id ? () => handleDeleteNote(selectedNote.id!) : undefined}
+          availableTags={availableTags}
+        />
+      </div>
+    );
+  }
+
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background to-background-light flex flex-col">
-      {/* Navbar */}
-      <nav className="p-4 flex items-center justify-between">
-        <div className="font-mono text-xl text-blue-500 font-semibold tracking-wide">
-          JARVIS WEB OS
+    <div style={styles.container}>
+      {/* Header con barra di ricerca e pulsanti */}
+      <div style={styles.header}>
+        <div style={styles.searchBar}>
+          <FiSearch style={{ marginRight: '8px', color: 'rgba(255, 255, 255, 0.5)' }} />
+          <input 
+            type="text" 
+            placeholder="Cerca nelle note..." 
+            style={styles.searchInput}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button 
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255, 255, 255, 0.5)' }}
+              onClick={() => setSearchTerm('')}
+            >
+              <FiX />
+            </button>
+          )}
         </div>
         
-        <div className="flex items-center gap-4">
-          <Link 
-            href="#features" 
-            className="text-white/70 hover:text-white transition-colors"
-          >
-            Funzionalità
-          </Link>
-          <Link 
-            href="#pricing" 
-            className="text-white/70 hover:text-white transition-colors"
-          >
-            Piani
-          </Link>
+        <div style={styles.buttonGroup}>
           <button 
-            className="px-4 py-2 rounded-md bg-blue-500 hover:bg-blue-500-dark text-white transition-colors"
-            onClick={handleDemoAccess}
-            disabled={isLoading}
+            style={{
+              ...styles.iconButton,
+              ...(viewMode === 'grid' ? styles.activeFilter : {})
+            }}
+            onClick={() => setViewMode('grid')}
+            title="Vista griglia"
           >
-            {isLoading ? 'Caricamento...' : 'Accedi Demo'}
+            <FiGrid />
+          </button>
+          
+          <button 
+            style={{
+              ...styles.iconButton,
+              ...(viewMode === 'list' ? styles.activeFilter : {})
+            }}
+            onClick={() => setViewMode('list')}
+            title="Vista lista"
+          >
+            <FiList />
+          </button>
+          
+          <button 
+            style={styles.button}
+            onClick={handleCreateNote}
+          >
+            <FiPlus />
+            <span>Nuova nota</span>
           </button>
         </div>
-      </nav>
+      </div>
       
-      {/* Hero section */}
-      <section className="flex-1 flex flex-col items-center justify-center px-4 text-center relative overflow-hidden">
-        {/* Pattern di sfondo */}
-        <div className="absolute inset-0 bg-grid-pattern opacity-5 z-0"></div>
-        
-        {/* Animazione particelle (simulata con dots) */}
-        <div className="absolute inset-0 z-0">
-          {Array.from({ length: 20 }).map((_, i: number) => (
-            <motion.div
-              key={i}
-              className="absolute w-2 h-2 rounded-full bg-blue-500 bg-opacity-30"
-              initial={{ 
-                x: Math.random() * window.innerWidth, 
-                y: Math.random() * window.innerHeight 
-              }}
-              animate={{ 
-                x: Math.random() * window.innerWidth, 
-                y: Math.random() * window.innerHeight 
-              }}
-              transition={{ 
-                duration: 10 + Math.random() * 20,
-                repeat: Infinity,
-                repeatType: 'reverse'
-              }}
-            />
-          ))}
-        </div>
-        
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 max-w-4xl"
-        >
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
-            Il tuo Web Operating System del futuro
-          </h1>
-          <p className="text-xl md:text-2xl text-white/70 mb-8">
-            Esperienza fluida, potente e completamente accessibile via browser. <br />
-            Ispirato all'assistente Jarvis di Iron Man.
-          </p>
-          
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+      <div style={styles.contentArea}>
+        {/* Tags filtro */}
+        {availableTags.length > 0 && (
+          <div style={styles.tagsContainer}>
             <button 
-              className="px-6 py-3 rounded-md bg-blue-500 hover:bg-blue-500-dark text-white transition-colors text-lg w-full md:w-auto"
-              onClick={handleDemoAccess}
-              disabled={isLoading}
+              style={{
+                ...styles.tag,
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.7)'
+              }}
+              onClick={() => setSelectedTag(null)}
             >
-              {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Inizializzazione...
-                </span>
-              ) : (
-                'Prova Demo Gratuita'
-              )}
+              <FiFilter style={{ marginRight: '4px' }} />
+              Tutti
             </button>
-            <Link 
-              href="#features" 
-              className="px-6 py-3 rounded-md border border-white/20 hover:bg-white/10 text-white transition-colors text-lg w-full md:w-auto"
+            
+            {availableTags.map(tag => (
+              <button 
+                key={tag} 
+                style={{
+                  ...styles.tag,
+                  backgroundColor: selectedTag === tag ? '#A47864' : 'rgba(255, 255, 255, 0.1)',
+                  color: selectedTag === tag ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)'
+                }}
+                onClick={() => handleTagClick(tag)}
+              >
+                #{tag}
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* Note */}
+        <AnimatePresence>
+          {filteredNotes.length === 0 ? (
+            <motion.div 
+              style={styles.noNotesMessage}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              Scopri di più
-            </Link>
-          </div>
-        </motion.div>
-        
-        {/* Preview mockup */}
-        <motion.div
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.3 }}
-          className="relative z-10 mt-12 w-full max-w-5xl"
-        >
-          <div className="glass-panel p-2 shadow-xl rounded-lg overflow-hidden">
-            <div className="relative pt-[56.25%] rounded-md overflow-hidden">
-              <div className="absolute inset-0 bg-surface">
-                {/* Qui potrebbe andare uno screenshot/mockup dell'app */}
-                <div className="h-full flex items-center justify-center text-white/30 text-lg">
-                  Anteprima dell'interfaccia Jarvis Web OS
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-      
-      {/* Features */}
-      <section id="features" className="py-24 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Funzionalità Principali
-            </h2>
-            <p className="text-white/70 max-w-2xl mx-auto">
-              Jarvis Web OS combina potenza, flessibilità e un'interfaccia futuristica per offrirti un'esperienza completa direttamente nel tuo browser.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Web OS Futuristico",
-                description: "Accesso diretto via browser con interfaccia modulare, pannelli dinamici e comandi vocali."
-              },
-              {
-                title: "Browser Interno",
-                description: "Web View avanzata con sessioni parallele e filtri di sicurezza configurabili."
-              },
-              {
-                title: "File Manager",
-                description: "Visualizzazione e gestione di file con drag & drop, tagging e ricerca intelligente."
-              },
-              {
-                title: "Web IDE",
-                description: "Editor di codice performante con sintassi multilinguaggio e terminale integrato."
-              },
-              {
-                title: "Assistente AI",
-                description: "Accessibile vocalmente e testualmente, per gestire file, generare codice e automatizzare task."
-              },
-              {
-                title: "Dashboard Personalizzabile",
-                description: "Layout flessibile con widget personalizzabili e temi grafici custom."
-              }
-            ].map((feature, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className="glass-panel p-6 hover:border-[#0ea5e9]/30 transition-colors"
-              >
-                <h3 className="text-xl font-semibold mb-3 text-white">{feature.title}</h3>
-                <p className="text-white/70">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-      
-      {/* Pricing */}
-      <section id="pricing" className="py-24 px-4 bg-surface-dark">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Piani e Abbonamenti
-            </h2>
-            <p className="text-white/70 max-w-2xl mx-auto">
-              Scegli il piano più adatto alle tue esigenze, dalla versione gratuita con funzionalità essenziali al piano premium completo.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: "Free",
-                price: "€0",
-                description: "Funzionalità di base per uso personale",
-                features: [
-                  "AI assistant con funzioni base",
-                  "IDE di base",
-                  "5GB di spazio cloud",
-                  "1 workspace alla volta",
-                  "Supporto community"
-                ],
-                cta: "Prova Gratis",
-                highlight: false
-              },
-              {
-                name: "Premium",
-                price: "€9.99",
-                period: "/mese",
-                description: "Tutte le funzionalità per professionisti",
-                features: [
-                  "AI assistant avanzato",
-                  "IDE completo + terminal",
-                  "50GB di spazio cloud",
-                  "Workspace illimitati",
-                  "API personalizzate",
-                  "Supporto prioritario"
-                ],
-                cta: "Inizia Ora",
-                highlight: true
-              },
-              {
-                name: "Team",
-                price: "€24.99",
-                period: "/mese",
-                description: "Soluzione completa per team e aziende",
-                features: [
-                  "Tutto del piano Premium",
-                  "100GB di spazio cloud",
-                  "Collaborazione in tempo reale",
-                  "Controlli admin avanzati",
-                  "Onboarding personalizzato",
-                  "Supporto 24/7"
-                ],
-                cta: "Contattaci",
-                highlight: false
-              }
-            ].map((plan, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                viewport={{ once: true }}
-                className={`glass-panel p-6 flex flex-col ${plan.highlight ? 'border-[#0ea5e9] ring-1 ring-primary/30' : ''}`}
-              >
-                <h3 className="text-xl font-semibold mb-1 text-white">{plan.name}</h3>
-                <div className="flex items-end mb-4">
-                  <span className="text-3xl font-bold">{plan.price}</span>
-                  {plan.period && <span className="text-white/70">{plan.period}</span>}
-                </div>
-                <p className="text-white/70 mb-6">{plan.description}</p>
-                
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, j) => (
-                    <li key={j} className="flex items-start">
-                      <span className="text-blue-500 mr-2">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                
-                <button 
-                  className={`mt-auto px-4 py-2 rounded-md ${
-                    plan.highlight
-                      ? 'bg-blue-500 hover:bg-blue-500-dark text-white'
-                      : 'border border-white/20 hover:bg-white/10 text-white'
-                  } transition-colors`}
-                  onClick={handleDemoAccess}
+              {searchTerm || selectedTag ? 
+                'Nessuna nota corrisponde ai criteri di ricerca.' : 
+                'Non hai ancora nessuna nota. Crea la tua prima nota!'}
+            </motion.div>
+          ) : (
+            <div style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
+              {filteredNotes.map(note => (
+                <motion.div
+                  key={note.id || Math.random().toString()}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  layout
+                  onClick={() => handleNoteClick(note)}
                 >
-                  {plan.cta}
-                </button>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-      
-      {/* Footer */}
-      <footer className="py-12 px-4 border-t border-white/10">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center">
-          <div className="font-mono text-lg text-blue-500 font-semibold tracking-wide mb-4 md:mb-0">
-            JARVIS WEB OS
-          </div>
-          
-          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
-            <Link href="#" className="text-white/70 hover:text-white transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="#" className="text-white/70 hover:text-white transition-colors">
-              Termini di Servizio
-            </Link>
-            <Link href="#" className="text-white/70 hover:text-white transition-colors">
-              Contattaci
-            </Link>
-            <Link href="#" className="text-white/70 hover:text-white transition-colors">
-              FAQ
-            </Link>
-          </div>
-        </div>
-        
-        <div className="mt-8 text-center text-white/50 text-sm">
-          &copy; {new Date().getFullYear()} Jarvis Web OS. Tutti i diritti riservati.
-        </div>
-      </footer>
-    </main>
-  )
-}
+                  <NoteCard 
+                    note={note} 
+                    compact={viewMode === 'list'}
+                    onPin={async () => {
+                      const updatedNote = { ...note, isPinned: !note.isPinned };
+                      await handleSaveNote(updatedNote);
+                    }}
+                    onDelete={() => note.id && handleDeleteNote(note.id)}
+                  />
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+export default NotesPanel;

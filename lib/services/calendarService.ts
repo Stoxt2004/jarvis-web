@@ -1,99 +1,143 @@
+// src/lib/services/calendarService.ts
 import { CalendarEvent } from '@/types/calendar';
-import { generateUniqueId } from '@/utils/calendarHelpers';
+import { toast } from 'sonner';
 
-// Chiave per lo storage locale
-const STORAGE_KEY = 'calendar_events';
-
-// Carica gli eventi dal localStorage
-export const getEvents = (): Promise<CalendarEvent[]> => {
-  return new Promise((resolve) => {
-    try {
-      const storedEvents = localStorage.getItem(STORAGE_KEY);
-      if (storedEvents) {
-        const events = JSON.parse(storedEvents);
-        // Converti le stringhe di date in oggetti Date
-        const parsedEvents = events.map((event: any) => ({
-          ...event,
-          start: new Date(event.start),
-          end: new Date(event.end)
-        }));
-        resolve(parsedEvents);
-      } else {
-        resolve([]);
-      }
-    } catch (error) {
-      console.error('Errore nel caricamento degli eventi:', error);
-      resolve([]);
+/**
+ * Recupera gli eventi dal database tramite API
+ */
+export const getEvents = async (workspaceId?: string): Promise<CalendarEvent[]> => {
+  try {
+    let url = '/api/calendar';
+    if (workspaceId) {
+      url += `?workspaceId=${workspaceId}`;
     }
-  });
-};
-
-// Salva un evento
-export const saveEvent = (event: CalendarEvent): Promise<CalendarEvent> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const events = await getEvents();
-      
-      let updatedEvent: CalendarEvent;
-      let updatedEvents: CalendarEvent[];
-      
-      if (event.id) {
-        // Aggiorna un evento esistente
-        updatedEvent = { ...event };
-        updatedEvents = events.map(e => e.id === event.id ? updatedEvent : e);
-      } else {
-        // Crea un nuovo evento
-        updatedEvent = { ...event, id: generateUniqueId() };
-        updatedEvents = [...events, updatedEvent];
-      }
-      
-      // Salva nel localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEvents));
-      
-      resolve(updatedEvent);
-    } catch (error) {
-      console.error('Errore nel salvare l\'evento:', error);
-      reject(error);
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Errore nel recupero degli eventi: ${response.status}`);
     }
-  });
+    
+    const events = await response.json();
+    
+    // Converti le stringhe di date in oggetti Date
+    return events.map((event: any) => ({
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end)
+    }));
+  } catch (error) {
+    console.error('Errore nel caricamento degli eventi:', error);
+    toast.error('Impossibile caricare gli eventi');
+    return [];
+  }
 };
 
-// Elimina un evento
-export const deleteEvent = (eventId: string): Promise<void> => {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const events = await getEvents();
-      const updatedEvents = events.filter(e => e.id !== eventId);
-      
-      // Salva nel localStorage
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEvents));
-      
-      resolve();
-    } catch (error) {
-      console.error('Errore nell\'eliminare l\'evento:', error);
-      reject(error);
+/**
+ * Recupera un singolo evento per ID
+ */
+export const getEvent = async (eventId: string): Promise<CalendarEvent | null> => {
+  try {
+    const response = await fetch(`/api/calendar?id=${eventId}`);
+    
+    if (!response.ok) {
+      throw new Error(`Errore nel recupero dell'evento: ${response.status}`);
     }
-  });
+    
+    const event = await response.json();
+    
+    return {
+      ...event,
+      start: new Date(event.start),
+      end: new Date(event.end)
+    };
+  } catch (error) {
+    console.error('Errore nel caricamento dell\'evento:', error);
+    toast.error('Impossibile caricare l\'evento');
+    return null;
+  }
 };
 
-// Integrazione con Google Calendar (simulata)
-export const syncWithGoogleCalendar = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    // Qui implementeresti la vera integrazione con l'API di Google Calendar
-    console.log('Sincronizzazione con Google Calendar...');
-    setTimeout(() => {
-      resolve(true);
-    }, 1500);
-  });
+/**
+ * Salva un evento nel database
+ */
+export const saveEvent = async (event: CalendarEvent): Promise<CalendarEvent> => {
+  try {
+    const method = event.id ? 'PUT' : 'POST';
+    const url = '/api/calendar';
+    
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Errore nel salvataggio dell'evento: ${response.status}`);
+    }
+    
+    const savedEvent = await response.json();
+    
+    toast.success(event.id ? 'Evento aggiornato con successo' : 'Evento creato con successo');
+    
+    return {
+      ...savedEvent,
+      start: new Date(savedEvent.start),
+      end: new Date(savedEvent.end)
+    };
+  } catch (error) {
+    console.error('Errore nel salvare l\'evento:', error);
+    toast.error('Impossibile salvare l\'evento');
+    throw error;
+  }
 };
 
-// Integrazione con Outlook (simulata)
-export const syncWithOutlook = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    // Qui implementeresti la vera integrazione con l'API di Outlook
-    console.log('Sincronizzazione con Outlook...');
-    setTimeout(() => {
-      resolve(true);
-    }, 1500);
-  });
+/**
+ * Elimina un evento dal database
+ */
+export const deleteEvent = async (eventId: string): Promise<void> => {
+  try {
+    const response = await fetch(`/api/calendar?id=${eventId}`, {
+      method: 'DELETE',
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Errore nell'eliminazione dell'evento: ${response.status}`);
+    }
+    
+    toast.success('Evento eliminato con successo');
+  } catch (error) {
+    console.error('Errore nell\'eliminare l\'evento:', error);
+    toast.error('Impossibile eliminare l\'evento');
+    throw error;
+  }
+};
+
+// Funzione helper per ottenere gli eventi da un intervallo di date
+export const getEventsByDateRange = async (
+  start: Date, 
+  end: Date, 
+  workspaceId?: string
+): Promise<CalendarEvent[]> => {
+  const events = await getEvents(workspaceId);
+  
+  return events.filter(event => 
+    (event.start >= start && event.start <= end) || 
+    (event.end >= start && event.end <= end) ||
+    (event.start <= start && event.end >= end)
+  );
+};
+
+// Funzione per verificare se ci sono eventi in un giorno specifico
+export const hasEventsOnDay = async (day: Date, workspaceId?: string): Promise<boolean> => {
+  const start = new Date(day);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(day);
+  end.setHours(23, 59, 59, 999);
+  
+  const events = await getEventsByDateRange(start, end, workspaceId);
+  return events.length > 0;
 };

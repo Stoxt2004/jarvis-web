@@ -79,6 +79,10 @@ model User {
   Subscription Subscription?
 
   AIRequestLog AIRequestLog[]
+
+  CalendarEvent CalendarEvent[]
+
+  Note Note[]
 }
 
 model VerificationToken {
@@ -113,6 +117,10 @@ model Workspace {
   data        Json     @default("{}")
   isDefault   Boolean  @default(false)
   files       File[]
+
+  CalendarEvent CalendarEvent[]
+
+  Note Note[]
 }
 
 // Modello per i file dell'utente
@@ -144,4 +152,37 @@ model AIRequestLog {
   createdAt   DateTime @default(now())
   
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CalendarEvent {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?  @db.Text
+  location      String?
+  start         DateTime
+  end           DateTime
+  reminder      Boolean  @default(false)
+  reminderTime  Int      @default(15) // minuti prima
+  color         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String
+  workspaceId   String?
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id])
+}
+
+model Note {
+  id            String    @id @default(cuid())
+  title         String
+  content       String    @db.Text
+  color         String?   // Colore di sfondo della nota
+  isPinned      Boolean   @default(false)
+  tags          String[]  // Array di tag associati alla nota
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userId        String
+  workspaceId   String?
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace     Workspace? @relation(fields: [workspaceId], references: [id])
 }

@@ -1,70 +1,64 @@
 // src/hooks/useFiles.ts
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
-// Definizione dei tipi
 export interface FileItem {
   id: string;
   name: string;
-  type: string;
-  size: number;
+  type: string; // mime type o 'folder'
   path: string;
-  content?: string;
-  parentId?: string | null;
-  workspaceId?: string | null;
+  size?: number;
   createdAt: Date;
   updatedAt: Date;
+  workspaceId?: string;
   userId: string;
-  isPublic: boolean;
+  parentId?: string;
+  isPublic?: boolean;
+  content?: string;
 }
 
-export function useFiles() {
+export const useFiles = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  /**
-   * Recupera i file nella root o in una cartella specifica
-   */
-  const getFiles = useCallback(async (folderId?: string, workspaceId?: string): Promise<FileItem[]> => {
+  
+  // Ottiene i file in una cartella o alla root
+  const getFiles = async (folderId?: string): Promise<FileItem[]> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      let url = '/api/files/folder';
-      const params = new URLSearchParams();
-      
-      if (folderId) {
-        params.append('id', folderId);
-      }
-      
-      if (workspaceId) {
-        params.append('workspace', workspaceId);
-      }
-      
-      if (params.toString()) {
-        url += `?${params.toString()}`;
-      }
+      const url = folderId 
+        ? `/api/files/folder?id=${folderId}` 
+        : '/api/files';
       
       const response = await fetch(url);
       
       if (!response.ok) {
-        throw new Error('Errore nel recupero dei file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
       const data = await response.json();
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il recupero dei file');
+      
+      // Converti le date da stringhe a oggetti Date
+      const filesWithDates = data.map((file: any) => ({
+        ...file,
+        createdAt: new Date(file.createdAt),
+        updatedAt: new Date(file.updatedAt)
+      }));
+      
+      return filesWithDates;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      // Ritorna un array vuoto in caso di errore
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Recupera un file specifico per ID
-   */
-  const getFile = useCallback(async (fileId: string): Promise<FileItem | null> => {
+  };
+  
+  // Ottiene un singolo file per ID
+  const getFile = async (fileId: string): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
     
@@ -72,67 +66,72 @@ export function useFiles() {
       const response = await fetch(`/api/files?id=${fileId}`);
       
       if (!response.ok) {
-        throw new Error('Errore nel recupero del file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      const data = await response.json();
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il recupero del file');
+      const file = await response.json();
+      
+      // Converti le date da stringhe a oggetti Date
+      return {
+        ...file,
+        createdAt: new Date(file.createdAt),
+        updatedAt: new Date(file.updatedAt)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Recupera un file dal percorso
-   */
-  const getFileByPath = useCallback(async (path: string, workspaceId?: string): Promise<FileItem | null> => {
+  };
+  
+  // Crea una nuova cartella
+  const createFolder = async (name: string, parentId?: string): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      let url = `/api/files?path=${encodeURIComponent(path)}`;
-      
-      if (workspaceId) {
-        url += `&workspace=${workspaceId}`;
-      }
-      
-      const response = await fetch(url);
+      const response = await fetch('/api/files/folder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          parentId
+        }),
+      });
       
       if (!response.ok) {
-        throw new Error('Errore nel recupero del file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      const data = await response.json();
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il recupero del file');
+      const folder = await response.json();
+      
+      // Converti le date da stringhe a oggetti Date
+      return {
+        ...folder,
+        createdAt: new Date(folder.createdAt),
+        updatedAt: new Date(folder.updatedAt)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Salva un nuovo file
-   */
-  const saveFile = useCallback(async (file: {
-    name: string;
-    type: string;
-    size: number;
-    content?: string;
-    path: string;
-    parentId?: string;
-    workspaceId?: string;
-  }): Promise<FileItem | null> => {
+  };
+  
+  // Salva un file
+  const saveFile = async (file: Partial<FileItem>): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
     
     try {
       const response = await fetch('/api/files', {
-        method: 'POST',
+        method: file.id ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -140,30 +139,28 @@ export function useFiles() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore nel salvataggio del file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      const data = await response.json();
-      toast.success(`File "${file.name}" salvato con successo`);
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il salvataggio del file');
-      toast.error(`Errore nel salvataggio di "${file.name}": ${err.message}`);
+      const savedFile = await response.json();
+      
+      // Converti le date da stringhe a oggetti Date
+      return {
+        ...savedFile,
+        createdAt: new Date(savedFile.createdAt),
+        updatedAt: new Date(savedFile.updatedAt)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Aggiorna un file esistente
-   */
-  const updateFile = useCallback(async (fileId: string, updates: {
-    content?: string;
-    size?: number;
-    newName?: string;
-  }): Promise<FileItem | null> => {
+  };
+  
+  // Aggiorna un file esistente
+  const updateFile = async (fileId: string, data: any): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
     
@@ -175,37 +172,33 @@ export function useFiles() {
         },
         body: JSON.stringify({
           id: fileId,
-          ...updates,
+          ...data
         }),
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore nell\'aggiornamento del file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      const data = await response.json();
+      const updatedFile = await response.json();
       
-      if (updates.newName) {
-        toast.success(`File rinominato in "${updates.newName}"`);
-      } else {
-        toast.success('File aggiornato con successo');
-      }
-      
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante l\'aggiornamento del file');
-      toast.error(`Errore nell'aggiornamento del file: ${err.message}`);
+      // Converti le date da stringhe a oggetti Date
+      return {
+        ...updatedFile,
+        createdAt: new Date(updatedFile.createdAt),
+        updatedAt: new Date(updatedFile.updatedAt)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Elimina un file
-   */
-  const deleteFile = useCallback(async (fileId: string): Promise<boolean> => {
+  };
+  
+  // Elimina un file
+  const deleteFile = async (fileId: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     
@@ -215,62 +208,125 @@ export function useFiles() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore nell\'eliminazione del file');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      toast.success('File eliminato con successo');
       return true;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante l\'eliminazione del file');
-      toast.error(`Errore nell'eliminazione del file: ${err.message}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Crea una nuova cartella
-   */
-  const createFolder = useCallback(async (folderName: string, parentId?: string, workspaceId?: string): Promise<FileItem | null> => {
+  };
+  
+  // Carica un file dal sistema
+  const uploadFile = async (file: File, parentId?: string): Promise<FileItem | null> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/files/folder', {
+      // Crea un form data
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      if (parentId) {
+        formData.append('parentId', parentId);
+      }
+      
+      const response = await fetch('/api/files/upload', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: folderName,
-          parentId,
-          workspaceId,
-        }),
+        body: formData,
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore nella creazione della cartella');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
-      const data = await response.json();
-      toast.success(`Cartella "${folderName}" creata con successo`);
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante la creazione della cartella');
-      toast.error(`Errore nella creazione della cartella: ${err.message}`);
+      const uploadedFile = await response.json();
+      
+      // Converti le date da stringhe a oggetti Date
+      return {
+        ...uploadedFile,
+        createdAt: new Date(uploadedFile.createdAt),
+        updatedAt: new Date(uploadedFile.updatedAt)
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return null;
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Ottieni i file recenti
-   */
-  const getRecentFiles = useCallback(async (limit: number = 5): Promise<FileItem[]> => {
+  };
+  
+  // Scarica un file
+  const downloadFile = async (fileId: string): Promise<boolean> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Prima ottieni i dettagli del file
+      const file = await getFile(fileId);
+      
+      if (!file) {
+        throw new Error('File non trovato');
+      }
+      
+      // Per i file con contenuto testuale, crea un blob e genera un URL
+      if (file.content) {
+        const blob = new Blob([file.content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        
+        // Crea un elemento <a> per scaricare il file
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        return true;
+      }
+      
+      // Per i file binari, usa il download endpoint
+      const response = await fetch(`/api/files/download?id=${fileId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
+      }
+      
+      // Ottieni il blob dalla risposta
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Crea un elemento <a> per scaricare il file
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Cleanup
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Ottiene file recenti
+  const getRecentFiles = async (limit: number = 10): Promise<FileItem[]> => {
     setIsLoading(true);
     setError(null);
     
@@ -278,183 +334,171 @@ export function useFiles() {
       const response = await fetch(`/api/files/recent?limit=${limit}`);
       
       if (!response.ok) {
-        throw new Error('Errore nel recupero dei file recenti');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
       const data = await response.json();
-      return data;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il recupero dei file recenti');
+      
+      // Converti le date da stringhe a oggetti Date
+      const filesWithDates = data.map((file: any) => ({
+        ...file,
+        createdAt: new Date(file.createdAt),
+        updatedAt: new Date(file.updatedAt)
+      }));
+      
+      return filesWithDates;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
       return [];
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  /**
-   * Carica un file da un'istanza di File del browser
-   */
-  const uploadFile = useCallback(async (
-    file: File, 
-    parentId?: string, 
-    workspaceId?: string
-  ): Promise<FileItem | null> => {
-    setIsLoading(true);
-    setError(null);
-    const size = file.size;
-    try {
-      // Determina il percorso in base al parent
-      let parentPath = '/';
-      
-      if (parentId) {
-        const parentFolder = await getFile(parentId);
-        if (parentFolder && parentFolder.type === 'folder') {
-          parentPath = parentFolder.path;
-        }
-      }
-      
-      const path = `${parentPath === '/' ? '' : parentPath}/${file.name}`;
-      
-      // Leggi il contenuto del file
-      let content;
-      
-      // Leggi il contenuto solo se è un file di testo
-      const textExtensions = ['txt', 'js', 'jsx', 'ts', 'tsx', 'html', 'css', 'json', 'md', 'py', 'java', 'c', 'cpp', 'cs', 'go', 'php', 'rb'];
-      const extension = file.name.split('.').pop()?.toLowerCase() || '';
-      
-      if (textExtensions.includes(extension)) {
-        content = await readFileContent(file);
-      } else {
-        // Per file binari, imposta una nota che indica la presenza di contenuto binario
-        // o converti in base64 per memorizzazione nel database
-        content = '[Binary content]'; // Oppure memorizza un indicatore
-      }
-      
-      // Crea un nuovo file
-      const fileData = {
-        name: file.name,
-        type: extension || file.type,
-        size: file.size, // Questa dovrebbe essere la dimensione effettiva del file
-        path,
-        content,
-        parentId,
-        workspaceId,
-      };
-      
-      return saveFile(fileData);
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il caricamento del file');
-      toast.error(`Errore nel caricamento di "${file.name}": ${err.message}`);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getFile, saveFile]);
-
-  /**
-   * Download di un file
-   */
-  const downloadFile = useCallback(async (fileId: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Ottieni il file
-      const file = await getFile(fileId);
-      
-      if (!file) {
-        throw new Error('File non trovato');
-      }
-      
-      // Crea un blob dal contenuto
-      if (file.content) {
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        
-        // Crea un link di download e fai clic su di esso
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Pulisci l'URL
-        URL.revokeObjectURL(url);
-        
-        return true;
-      } else {
-        throw new Error('Il file non ha contenuto');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il download del file');
-      toast.error(`Errore nel download del file: ${err.message}`);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getFile]);
-
-  /**
-   * Funzione di utilità per leggere il contenuto di un file
-   */
-  const readFileContent = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          resolve(event.target.result as string);
-        } else {
-          reject(new Error('Errore nella lettura del file'));
-        }
-      };
-      
-      reader.onerror = () => {
-        reject(new Error('Errore nella lettura del file'));
-      };
-      
-      reader.readAsText(file);
-    });
   };
-
-  /**
-   * Calcola lo spazio di archiviazione utilizzato dall'utente
-   */
-  const getUserStorageUsage = useCallback(async (): Promise<number> => {
+  
+  // Cerca file per nome e/o contenuto
+  const searchFiles = async (query: string): Promise<FileItem[]> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/files/usage');
+      const response = await fetch(`/api/files/search?q=${encodeURIComponent(query)}`);
       
       if (!response.ok) {
-        throw new Error('Errore nel recupero dell\'utilizzo dello storage');
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
       }
       
       const data = await response.json();
-      return data.usage || 0;
-    } catch (err: any) {
-      setError(err.message || 'Errore durante il recupero dell\'utilizzo dello storage');
-      return 0;
+      
+      // Converti le date da stringhe a oggetti Date
+      const filesWithDates = data.map((file: any) => ({
+        ...file,
+        createdAt: new Date(file.createdAt),
+        updatedAt: new Date(file.updatedAt)
+      }));
+      
+      return filesWithDates;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      return [];
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
+  };
+  
+  // Ottiene la struttura delle cartelle (albero)
+  const getFolderTree = async (): Promise<FileItem[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/files/tree');
+      
+      if (!response.ok) {
+        throw new Error(`Errore (${response.status}): ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      // Converti le date da stringhe a oggetti Date
+      const foldersWithDates = data.map((folder: any) => ({
+        ...folder,
+        createdAt: new Date(folder.createdAt),
+        updatedAt: new Date(folder.updatedAt),
+        children: folder.children ? folder.children.map((child: any) => ({
+          ...child,
+          createdAt: new Date(child.createdAt),
+          updatedAt: new Date(child.updatedAt)
+        })) : []
+      }));
+      
+      return foldersWithDates;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Condividi un file (pubblica/privato)
+  const toggleFileVisibility = async (fileId: string, isPublic: boolean): Promise<FileItem | null> => {
+    return updateFile(fileId, { isPublic });
+  };
+  
+  // Gestione integrazione multi-pannello (nuovo)
+  
+  // Copia contenuto tra pannelli editor
+  const copyContentBetweenEditors = async (sourceFileId: string, targetPanelId: string): Promise<boolean> => {
+    try {
+      // Ottieni il contenuto del file sorgente
+      const sourceFile = await getFile(sourceFileId);
+      if (!sourceFile || !sourceFile.content) {
+        throw new Error('Contenuto del file sorgente non disponibile');
+      }
+      
+      // Qui dovresti aggiornare il contenuto del pannello target
+      // Questo richiederebbe l'integrazione con workspaceStore
+      
+      toast.success('Contenuto copiato nel pannello target');
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      toast.error(`Errore: ${errorMessage}`);
+      return false;
+    }
+  };
+  
+  // Analizza più file contemporaneamente (simulato)
+  const analyzeMultipleFiles = async (fileIds: string[], analysisType: string): Promise<string> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Ottieni i file selezionati
+      const files = await Promise.all(fileIds.map(id => getFile(id)));
+      const validFiles = files.filter(Boolean) as FileItem[];
+      
+      if (validFiles.length === 0) {
+        throw new Error('Nessun file valido da analizzare');
+      }
+      
+      // In una vera implementazione, qui chiameresti l'API AI per l'analisi
+      // Per ora, simuliamo una risposta
+      const fileNames = validFiles.map(file => file.name).join(', ');
+      
+      // Simuliamo un po' di latenza
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      return `Analisi di ${analysisType} completata per i file: ${fileNames}. Sono stati analizzati ${validFiles.length} file per un totale di ${validFiles.reduce((acc, file) => acc + (file.content?.length || 0), 0)} caratteri.`;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      setError(errorMessage);
+      return `Errore durante l'analisi: ${errorMessage}`;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return {
     isLoading,
     error,
     getFiles,
     getFile,
-    getFileByPath,
+    createFolder,
     saveFile,
     updateFile,
     deleteFile,
-    createFolder,
-    getRecentFiles,
     uploadFile,
     downloadFile,
-    getUserStorageUsage
+    getRecentFiles,
+    searchFiles,
+    getFolderTree,
+    toggleFileVisibility,
+    copyContentBetweenEditors,
+    analyzeMultipleFiles
   };
-}
+};

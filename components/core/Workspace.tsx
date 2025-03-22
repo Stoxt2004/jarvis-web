@@ -5,7 +5,9 @@ import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FiPlus, FiGrid, FiBriefcase, FiCode, FiFolder, FiTerminal, FiFileText, FiGlobe, FiCalendar } from 'react-icons/fi'
 import Panel from './Panel'
-import { useWorkspaceStore, PanelType } from '@/lib/store/workspaceStore'
+import { useWorkspaceStore } from '@/lib/store/workspaceStore'
+
+type PanelType = 'editor' | 'fileManager' | 'terminal' | 'notes' | 'dashboard' | 'calendar';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
 
@@ -49,12 +51,6 @@ export default function Workspace() {
       return;
     }
     const panelDefaults = {
-      browser: {
-        title: 'Browser',
-        position: { x: 120, y: 120 },
-        size: { width: 900, height: 600 },
-        content: { url: 'https://www.google.com' },
-      },
       editor: {
         title: 'Editor',
         position: { x: 140, y: 140 },
@@ -89,7 +85,7 @@ export default function Workspace() {
       },
     }
     
-    const defaults = panelDefaults[type]
+    const defaults = panelDefaults[type as keyof typeof panelDefaults]
     addPanel({
       type,
       ...defaults,
@@ -98,7 +94,6 @@ export default function Workspace() {
 
   // Icone per i diversi tipi di app
   const appIcons = {
-    browser: <FiGlobe />,
     editor: <FiCode />,
     fileManager: <FiFolder />,
     terminal: <FiTerminal />,
@@ -130,7 +125,7 @@ export default function Workspace() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.7 }}
       >
-        {(['browser', 'editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
+        {(['editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
           <motion.button
             key={type}
             className="p-3 rounded-full"
