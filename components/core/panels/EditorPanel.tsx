@@ -8,17 +8,21 @@ import { Panel, useWorkspaceStore } from '@/lib/store/workspaceStore'
 import { toast } from 'sonner'
 import CodeAssistant from '../../ai/CodeAssistant'
 import { executeCommand } from '@/lib/services/openaiService';
-
+import { useFiles } from '@/hooks/useFiles'
+import { useFileSystemStore } from '@/lib/store/fileSystemStore';
+import { nanoid } from 'nanoid';
 interface EditorPanelProps {
   panel: Panel
 }
 
+// Definisci l'interfaccia aggiornata all'inizio del file
 interface FileTab {
   id: string;
   name: string;
   language: string;
   content: string;
   isDirty: boolean;
+  fileId?: string; // Aggiungiamo questa proprietà con '?' per renderla opzionale
 }
 
 // Struttura per lo storico dei file (undo/redo)
@@ -32,14 +36,25 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   
   // Stato per gestire file multipli (tabs)
   const [fileTabs, setFileTabs] = useState(() => {
-    const initialContent = panel.content?.value || '// Scrivi il tuo codice qui\n';
-    const initialLanguage = panel.content?.language || 'javascript';
-    const initialFileName = panel.content?.fileName || 'untitled.js';
+    // Verifica se il pannello ha già un contenuto (ad esempio da un drop)
+    if (panel.content && panel.content.fileName) {
+      console.log('Inizializzando editor con contenuto esistente:', panel.content);
+      return [{
+        id: 'file-' + nanoid(), // Usa nanoid invece di Date.now()
+        name: panel.content.fileName,
+        language: panel.content.language || 'javascript',
+        content: panel.content.value || '',
+        isDirty: false,
+        fileId: panel.content.fileId
+      }];
+    }
+    
+    // Altrimenti usa un file vuoto predefinito
     return [{
-      id: 'file-' + Date.now(),
-      name: initialFileName,
-      language: initialLanguage,
-      content: initialContent,
+      id: 'file-' + nanoid(), // Usa nanoid invece di Date.now()
+      name: 'untitled.js',
+      language: 'javascript',
+      content: '// Scrivi il tuo codice qui\n',
       isDirty: false
     }];
   });
@@ -60,18 +75,68 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   // Riferimenti
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const activeFile = fileTabs.find(tab => tab.id === activeFileId) || fileTabs[0];
-  
+  const { saveFile } = useFiles();
+  const { addModifiedFileId, markDataAsChanged } = useFileSystemStore();
   // Inizializza la history al primo render
   useEffect(() => {
-    const initialHistory: Record<string, FileHistory> = {};
-    fileTabs.forEach(tab => {
-      initialHistory[tab.id] = {
-        past: [],
-        future: []
+    if (!panel.content || !panel.content.timestamp) return;
+    
+    const { fileName, language, value, fileId, timestamp } = panel.content;
+    console.log('Editor panel ha ricevuto un nuovo file via timestamp:', timestamp);
+    
+    // Verifica se esiste già una tab con questo file
+    const existingTabIndex = fileTabs.findIndex(tab => 
+      (fileId && tab.fileId === fileId) || (!fileId && tab.name === fileName)
+    );
+    
+    if (existingTabIndex >= 0) {
+      // Aggiorna la tab esistente
+      const updatedTabs = [...fileTabs];
+      updatedTabs[existingTabIndex] = {
+        ...updatedTabs[existingTabIndex],
+        content: value || '',
+        language: language || 'javascript',
+        fileId,
+        isDirty: false
       };
-    });
-    setHistory(initialHistory);
-  }, []);
+      
+      setFileTabs(updatedTabs);
+      setActiveFileId(updatedTabs[existingTabIndex].id);
+    } else {
+      // Crea una nuova tab
+      const newTab: FileTab = {
+        id: 'file-' + nanoid(),
+        name: fileName || 'untitled.js',
+        language: language || 'javascript',
+        content: value || '',
+        isDirty: false,
+        fileId
+      };
+      
+      // Quando aggiungi una nuova tab
+      setFileTabs(prev => {
+        // Verifica se esiste già una tab con questo fileId o nome
+        const isDuplicate = prev.some(tab => 
+          (fileId && tab.fileId === fileId) || (!fileId && tab.name === fileName)
+        );
+        
+        if (isDuplicate) {
+          console.log('Tentativo di creare una tab duplicata evitato');
+          return prev; // Non aggiungere la tab se è un duplicato
+        }
+        
+        return [...prev, newTab]; // Aggiungi la nuova tab
+      });
+      
+      setActiveFileId(newTab.id);
+      
+      // Inizializza la history per il nuovo file
+      setHistory(prev => ({
+        ...prev,
+        [newTab.id]: { past: [], future: [] }
+      }));
+    }
+  }, [panel.content?.timestamp]);
   
   // Auto-resize dell'area di testo
   useEffect(() => {
@@ -80,6 +145,61 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       editorRef.current.style.height = `${editorRef.current.scrollHeight}px`;
     }
   }, [activeFile.content]);
+
+  useEffect(() => {
+    // Questo effetto viene eseguito quando panel.content cambia
+    if (panel.content) {
+      const { fileName, language, value, fileId, timestamp } = panel.content;
+      
+      console.log('Editor panel ha ricevuto update:', { fileName, timestamp });
+      
+      // Se c'è un fileName, verifica se è già aperto
+      if (fileName) {
+        const existingTabIndex = fileTabs.findIndex(tab => 
+          (fileId && tab.fileId === fileId) || tab.name === fileName
+        );
+        
+        if (existingTabIndex >= 0) {
+          // Se esiste già e c'è un timestamp, aggiorna sempre
+          if (timestamp) {
+            const updatedTabs = [...fileTabs];
+            updatedTabs[existingTabIndex] = {
+              ...updatedTabs[existingTabIndex],
+              content: value || '',
+              language: language || 'javascript',
+              fileId,
+              isDirty: false
+            };
+            
+            setFileTabs(updatedTabs);
+            setActiveFileId(updatedTabs[existingTabIndex].id);
+          }
+        } else {
+          // Crea una nuova tab
+          const newTab: FileTab = {
+            id: 'file-' + nanoid(),
+            name: fileName,
+            language: language || 'javascript',
+            content: value || '',
+            isDirty: false
+          };
+          
+          if (fileId) {
+            newTab.fileId = fileId;
+          }
+          
+          setFileTabs(prev => [...prev, newTab]);
+          setActiveFileId(newTab.id);
+          
+          // Inizializza la history per il nuovo file
+          setHistory(prev => ({
+            ...prev,
+            [newTab.id]: { past: [], future: [] }
+          }));
+        }
+      }
+    }
+  }, [panel.content]); 
   
   // Implementazione del salvataggio automatico
   useEffect(() => {
@@ -154,7 +274,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     
     // Crea il nuovo file
     const newFile: FileTab = {
-      id: 'file-' + Date.now(),
+      id: 'file-' + nanoid(),
       name: fileName,
       language,
       content: '',
@@ -211,7 +331,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
         
         // Crea il nuovo file
         const newFile: FileTab = {
-          id: 'file-' + Date.now(),
+          id: 'file-' + nanoid(),
           name: file.name,
           language,
           content,
@@ -449,10 +569,47 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
   };
 
   // Funzione per salvare il contenuto dell'editor
-  const handleSave = () => {
+  const handleSave = async () => {
     const activeFile = fileTabs.find(tab => tab.id === activeFileId);
-    if (activeFile) {
-      updatePanelContent(panel.id, activeFile.content);
+    if (!activeFile) return;
+    
+    try {
+      // Identifica l'ID del file da salvare
+      const fileId = activeFile.fileId || panel.content?.fileId;
+      console.log("Salvando il file con ID:", fileId);
+      
+      if (!fileId) {
+        console.warn("Nessun ID del file trovato per il salvataggio");
+      }
+      
+      // Aggiorna il pannello con il nuovo contenuto
+      updatePanelContent(panel.id, {
+        fileName: activeFile.name,
+        language: activeFile.language,
+        value: activeFile.content,
+        fileId // Usa l'ID del file
+      });
+      
+      // Se l'ID del file è disponibile, salva il file nel sistema
+      if (fileId) {
+        // Salva il file
+        const result = await saveFile({
+          id: fileId,
+          content: activeFile.content,
+          name: activeFile.name
+        });
+        
+        if (result) {
+          console.log('File salvato con successo:', result);
+          
+          // Segnala che il file è stato modificato
+          addModifiedFileId(fileId);
+          markDataAsChanged();
+          console.log("File segnalato come modificato:", fileId);
+        }
+      }
+      
+      // Aggiorna lo stato del tab
       setFileTabs(prev =>
         prev.map(tab =>
           tab.id === activeFileId
@@ -460,7 +617,11 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
             : tab
         )
       );
+      
       toast.success('File salvato con successo');
+    } catch (error) {
+      console.error('Errore durante il salvataggio:', error);
+      toast.error('Errore durante il salvataggio del file');
     }
   };
 
@@ -546,7 +707,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     setTimeout(() => {
       // Crea index.html
       const htmlFile: FileTab = {
-        id: 'file-' + Date.now(),
+        id: 'file-' + nanoid(),
         name: 'index.html',
         language: 'html',
         content: `<!DOCTYPE html>
@@ -567,7 +728,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       
       // Crea styles.css
       const cssFile: FileTab = {
-        id: 'file-' + Date.now() + 1,
+        id: 'file-' + nanoid() + 1,
         name: 'styles.css',
         language: 'css',
         content: `* {
@@ -593,7 +754,7 @@ body {
       
       // Crea app.js
       const jsFile: FileTab = {
-        id: 'file-' + Date.now() + 2,
+        id: 'file-' + nanoid() + 2,
         name: 'app.js',
         language: 'javascript',
         content: `// ${projectType} - Generated by AI Assistant

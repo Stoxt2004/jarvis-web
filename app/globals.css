@@ -36,6 +36,20 @@ body {
   padding: 0;
 }
 
+/* Stili per il drag and drop */
+[draggable="true"] {
+  cursor: grab;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Stile per la zona di drop quando un elemento è trascinato sopra */
+.drop-active {
+  box-shadow: 0 0 0 2px #A78BFA !important;
+}
+
 
 
 /* Stili per elementi di vetro (glass effect) */

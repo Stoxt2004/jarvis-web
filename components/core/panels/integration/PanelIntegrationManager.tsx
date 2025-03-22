@@ -68,9 +68,7 @@ export default function PanelIntegrationManager() {
       setShowPremiumBanner(true);
       return;
     }
-    
-    // Esegui la sincronizzazione
-    syncPanels(source, target, field);
+  
     
     // Feedback all'utente
     const fieldNames = {

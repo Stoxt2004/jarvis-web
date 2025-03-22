@@ -1,8 +1,7 @@
-// components/core/panels/FileItem.tsx
+// components/core/panels/FileItem.tsx (versione completa)
 import React, { useState } from 'react';
 import { FiFolder, FiFile, FiEdit2, FiTrash2, FiStar } from 'react-icons/fi';
 import { useDragDropStore } from '@/lib/store/dragDropStore';
-import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 interface FileItemProps {
@@ -77,86 +76,122 @@ export default function FileItem({
         return <FiFile size={24} className="text-red-500" />;
       case 'css':
         return <FiFile size={24} className="text-blue-500" />;
+      case 'json':
+        return <FiFile size={24} className="text-amber-500" />;
+      case 'py':
+        return <FiFile size={24} className="text-blue-500" />;
+      case 'java':
+        return <FiFile size={24} className="text-orange-700" />;
+      case 'c':
+      case 'cpp':
+        return <FiFile size={24} className="text-blue-700" />;
+      case 'md':
+        return <FiFile size={24} className="text-sky-500" />;
       default:
         return <FiFile size={24} />;
     }
   };
   
   // Gestisce l'inizio del drag
-  const handleDragStart = (e: React.DragEvent) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     // Solo i file (non le cartelle) possono essere draggati
     if (file.type === 'folder') {
       e.preventDefault();
       return;
     }
     
-    // Imposta i dati del drag
-    e.dataTransfer.setData('application/json', JSON.stringify({
-      fileId: file.id,
-      fileName: file.name,
-      fileType: file.type,
-      panelId: panelId
-    }));
+    console.log('Drag start:', file.name);
     
-    // Crea un'immagine personalizzata per il drag
-    const dragPreview = document.createElement('div');
-    dragPreview.style.padding = '8px';
-    dragPreview.style.background = '#1A1A2E';
-    dragPreview.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-    dragPreview.style.borderRadius = '4px';
-    dragPreview.style.color = 'white';
-    dragPreview.style.fontSize = '14px';
-    dragPreview.style.display = 'flex';
-    dragPreview.style.alignItems = 'center';
-    dragPreview.style.gap = '8px';
-    dragPreview.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-    dragPreview.style.pointerEvents = 'none';
-    dragPreview.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-      <polyline points="14 2 14 8 20 8"></polyline>
-      <line x1="16" y1="13" x2="8" y2="13"></line>
-      <line x1="16" y1="17" x2="8" y2="17"></line>
-      <polyline points="10 9 9 9 8 9"></polyline>
-    </svg>
-    <span>${file.name}</span>`;
-    
-    document.body.appendChild(dragPreview);
-    dragPreview.style.position = 'absolute';
-    dragPreview.style.top = '-1000px';
-    dragPreview.style.zIndex = '9999';
-    
+    // Imposta i dati del drag in modo esplicito
     try {
-      e.dataTransfer.setDragImage(dragPreview, 20, 20);
+      const data = JSON.stringify({
+        fileId: file.id,
+        fileName: file.name,
+        fileType: file.type,
+        panelId: panelId
+      });
+      
+      // Il MIME type è fondamentale
+      e.dataTransfer.setData('application/json', data);
+      
+      // Assicuriamoci che sia impostato anche come testo (per compatibilità)
+      e.dataTransfer.setData('text/plain', file.name);
+      
+      // Imposta l'effetto di trascinamento
+      e.dataTransfer.effectAllowed = 'copy';
+      
+      // Crea un'immagine di trascinamento personalizzata per un feedback visivo
+      const dragImage = document.createElement('div');
+      dragImage.style.position = 'absolute';
+      dragImage.style.width = '150px';
+      dragImage.style.height = '40px';
+      dragImage.style.backgroundColor = '#1A1A2E';
+      dragImage.style.border = '1px solid #A78BFA';
+      dragImage.style.borderRadius = '4px';
+      dragImage.style.padding = '8px';
+      dragImage.style.display = 'flex';
+      dragImage.style.alignItems = 'center';
+      dragImage.style.justifyContent = 'center';
+      dragImage.style.color = 'white';
+      dragImage.style.fontWeight = 'bold';
+      dragImage.style.pointerEvents = 'none';
+      dragImage.textContent = file.name;
+      
+      document.body.appendChild(dragImage);
+      dragImage.style.top = '-1000px'; // Nascondiamo fuori schermo
+      
+      // Imposta l'immagine di trascinamento
+      e.dataTransfer.setDragImage(dragImage, 75, 20);
+      
+      // Rimuovi l'elemento dopo un breve periodo
+      setTimeout(() => {
+        if (dragImage.parentNode) {
+          document.body.removeChild(dragImage);
+        }
+      }, 100);
+      
+      // Notifica lo store del drag & drop
+      startDrag(file.id, file.name, file.type, file.content, panelId);
     } catch (error) {
-      console.error('Impossibile impostare l\'immagine di drag:', error);
+      console.error("Errore nell'impostazione dei dati drag:", error);
+      toast.error("Errore nell'iniziare il trascinamento");
     }
     
-    // Imposta lo stato del drag nello store
-    startDrag(file.id, file.name, file.type, file.content, panelId);
     setIsDragging(true);
     
-    // Feedback visivo per l'utente
+    // Feedback visivo
     toast.info(`Trascina ${file.name} in un editor per aprirlo`, {
-      duration: 1500,
+      duration: 2000,
       position: 'bottom-right'
     });
-    
-    // Cleanup dopo un breve ritardo
-    setTimeout(() => {
-      if (dragPreview.parentNode) {
-        document.body.removeChild(dragPreview);
-      }
-    }, 100);
   };
   
   // Gestisce la fine del drag
-  const handleDragEnd = () => {
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    console.log('Drag end:', file.name);
     setIsDragging(false);
+    
+    // Verifica se il drop è avvenuto con successo
+    if (e.dataTransfer.dropEffect === 'none') {
+      console.log('Drop non avvenuto o non riuscito');
+    } else {
+      console.log('Drop avvenuto con successo con effetto:', e.dataTransfer.dropEffect);
+    }
+    
+    // Notifica lo store che il drag è terminato
     endDrag();
   };
   
+  // Previeni il drag durante l'edit o altre operazioni
+  const preventDragIfNeeded = (e: React.DragEvent<HTMLDivElement>) => {
+    if (file.type === 'folder') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+  
   return (
-    <motion.div
+    <div
       className={`p-3 rounded-lg cursor-pointer relative ${
         isSelected 
           ? 'bg-primary/20 ring-1 ring-primary' 
@@ -165,13 +200,14 @@ export default function FileItem({
       onClick={onSelect}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
-      draggable={file.type !== 'folder'} // Solo i file possono essere draggati
+      draggable={file.type !== 'folder'}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ duration: 0.2 }}
+      onDragOver={preventDragIfNeeded}
+      style={{
+        transition: 'transform 0.2s, opacity 0.2s, background-color 0.2s',
+        transform: isDragging ? 'scale(0.95)' : 'scale(1)'
+      }}
     >
       {file.isPublic && (
         <div className="absolute top-1 right-1 text-yellow-500">
@@ -195,6 +231,6 @@ export default function FileItem({
           }
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

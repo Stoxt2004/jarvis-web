@@ -5,16 +5,15 @@ import { toast } from 'sonner';
 export interface FileItem {
   id: string;
   name: string;
-  type: string; // mime type o 'folder'
+  type: string;
   path: string;
   size?: number;
   createdAt: Date;
   updatedAt: Date;
-  workspaceId?: string;
   userId: string;
   parentId?: string;
   isPublic?: boolean;
-  content?: string;
+  content?: string; // Assicurati che questo campo sia definito
 }
 
 export const useFiles = () => {
@@ -63,6 +62,9 @@ export const useFiles = () => {
     setError(null);
     
     try {
+      // Aggiungi logging per debug
+      console.log(`Richiesta getFile per ID: ${fileId}`);
+      
       const response = await fetch(`/api/files?id=${fileId}`);
       
       if (!response.ok) {
@@ -70,6 +72,19 @@ export const useFiles = () => {
       }
       
       const file = await response.json();
+      console.log('Risposta API getFile:', file);
+      
+      // Se il contenuto non è presente nel file, effettua una richiesta separata per il contenuto
+      if (file && !file.content && file.type !== 'folder') {
+        console.log('Contenuto non presente, effettuo richiesta separata');
+        const contentResponse = await fetch(`/api/files/content?id=${fileId}`);
+        
+        if (contentResponse.ok) {
+          const contentData = await contentResponse.json();
+          file.content = contentData.content;
+          console.log('Contenuto recuperato separatamente:', file.content);
+        }
+      }
       
       // Converti le date da stringhe a oggetti Date
       return {
@@ -80,6 +95,7 @@ export const useFiles = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
       setError(errorMessage);
+      console.error('Errore nel recupero del file:', errorMessage);
       return null;
     } finally {
       setIsLoading(false);
@@ -130,6 +146,8 @@ export const useFiles = () => {
     setError(null);
     
     try {
+      console.log('Salvando file con dati:', file);
+      
       const response = await fetch('/api/files', {
         method: file.id ? 'PUT' : 'POST',
         headers: {
@@ -143,6 +161,7 @@ export const useFiles = () => {
       }
       
       const savedFile = await response.json();
+      console.log('File salvato con successo, risposta:', savedFile);
       
       // Converti le date da stringhe a oggetti Date
       return {
@@ -153,6 +172,7 @@ export const useFiles = () => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
       setError(errorMessage);
+      console.error('Errore nel salvataggio del file:', errorMessage);
       return null;
     } finally {
       setIsLoading(false);

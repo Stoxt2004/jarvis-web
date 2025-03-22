@@ -5,12 +5,15 @@ import { useState, useEffect, useRef } from 'react'
 import { FiFolder, FiFile, FiUpload, FiDownload, FiTrash2, FiPlus, 
          FiArrowLeft, FiSearch, FiGrid, FiList, FiMoreVertical, FiEdit2,
          FiCopy, FiClipboard, FiStar, FiPlay, FiChevronRight, FiExternalLink, 
-         FiX} from 'react-icons/fi'
+         FiX,
+         FiRefreshCw} from 'react-icons/fi'
 import { Panel, useWorkspaceStore, PanelType } from '@/lib/store/workspaceStore'
+import { useDragDropStore } from '@/lib/store/dragDropStore'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { useFiles, FileItem } from '@/hooks/useFiles'
-
+import FileItemComponent from './FileItem' // Importiamo il componente FileItem
+import { useFileSystemStore } from '@/lib/store/fileSystemStore';
 interface FileManagerPanelProps {
   panel: Panel
 }
@@ -44,7 +47,7 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
   const fileManagerRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
   const { addPanel } = useWorkspaceStore()
-  
+  const { dataChanged, modifiedFileIds, resetDataChangedFlag, clearModifiedFileIds } = useFileSystemStore();
   // Hook personalizzato per gestire i file
   const { 
     isLoading, 
@@ -59,11 +62,6 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
     getFile
   } = useFiles()
   
-  // Carica i file all'avvio o quando cambia la cartella
-  useEffect(() => {
-    loadFiles()
-  }, [currentFolderId])
-  
   // Carica i file dalla cartella corrente
   const loadFiles = async () => {
     try {
@@ -74,6 +72,33 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
       toast.error("Si è verificato un errore durante il caricamento dei file");
     }
   };
+
+  // Carica i file all'avvio o quando cambia la cartella
+  useEffect(() => {
+    loadFiles()
+  }, [currentFolderId])
+  
+  useEffect(() => {
+    if (dataChanged) {
+      console.log('Rilevati cambiamenti nei file, ricarico i dati');
+      loadFiles();
+      resetDataChangedFlag();
+      clearModifiedFileIds();
+    }
+  }, [dataChanged]);
+
+  useEffect(() => {
+    console.log("Lista degli ID dei file modificati:", modifiedFileIds);
+    
+    // Se il fileManager è montato e ci sono file modificati, ricarica
+    if (modifiedFileIds.length > 0) {
+      console.log("Ricarico i file modificati...");
+      // Qui puoi scegliere di ricaricare solo i file modificati
+      // oppure tutti i file della cartella corrente
+      loadFiles();
+      clearModifiedFileIds(); // Pulisci dopo il ricaricamento
+    }
+  }, [modifiedFileIds, loadFiles, clearModifiedFileIds]);
   
   // Gestisci il click fuori dal menu contestuale per chiuderlo
   useEffect(() => {
@@ -153,6 +178,49 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
     setShowContextMenu(false);
   };
   
+  // Ottiene l'icona appropriata per il tipo di file
+const getFileIcon = (item: FileItem) => {
+  if (item.type === 'folder') {
+    return <FiFolder size={24} color="#4299e1" />;
+  }
+  
+  // Icone specifiche per estensione
+  const extension = item.name.split('.').pop()?.toLowerCase() || '';
+  switch (extension) {
+    case 'pdf':
+      return <FiFile size={24} color="#f56565" />;
+    case 'txt':
+      return <FiFile size={24} color="#a0aec0" />;
+    case 'doc':
+    case 'docx':
+      return <FiFile size={24} color="#4299e1" />;
+    case 'xls':
+    case 'xlsx':
+      return <FiFile size={24} color="#48bb78" />;
+    case 'ppt':
+    case 'pptx':
+      return <FiFile size={24} color="#ed8936" />;
+    case 'jpg':
+    case 'jpeg':
+    case 'png':
+    case 'gif':
+      return <FiFile size={24} color="#667eea" />;
+    case 'js':
+    case 'jsx':
+      return <FiFile size={24} color="#ecc94b" />;
+    case 'html':
+      return <FiFile size={24} color="#e53e3e" />;
+    case 'css':
+      return <FiFile size={24} color="#3182ce" />;
+    case 'json':
+      return <FiFile size={24} color="#d69e2e" />;
+    case 'py':
+      return <FiFile size={24} color="#4299e1" />;
+    default:
+      return <FiFile size={24} />;
+  }
+};
+
   // Gestione della selezione dei file
   const handleItemSelect = (item: FileItem, event: React.MouseEvent) => {
     // Chiudi il menu contestuale
@@ -182,18 +250,38 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
   };
   
   // Gestione doppio click
-  const handleItemDoubleClick = (item: FileItem) => {
-    if (item.type === 'folder') {
-      handleFolderClick(item);
-      return;
+  const handleItemDoubleClick = async (item: FileItem) => {
+  if (item.type === 'folder') {
+    handleFolderClick(item);
+    return;
+  }
+  
+  // Se questo file è stato modificato, ricaricalo prima di aprirlo
+  if (modifiedFileIds.includes(item.id)) {
+    console.log('Ricarico il file modificato prima di aprirlo:', item.id);
+    try {
+      const updatedFile = await getFile(item.id);
+      if (updatedFile) {
+        // Aggiorna il file nella lista locale
+        setItems(prev => prev.map(file => 
+          file.id === item.id ? updatedFile : file
+        ));
+        
+        // Apri il file aggiornato
+        openFile(updatedFile);
+        return;
+      }
+    } catch (error) {
+      console.error('Errore nel ricaricare il file modificato:', error);
     }
-    
-    // Apri i file in base al tipo
-    openFile(item);
-  };
+  }
+  
+  // Comportamento normale per i file non modificati
+  openFile(item);
+};
   
   // Funzione per aprire file in base al tipo
-  const openFile = (file: FileItem) => {
+  const openFile = async (file: FileItem) => {
     // In base all'estensione, apri il file nel pannello appropriato
     const extension = file.name.split('.').pop()?.toLowerCase() || '';
     
@@ -208,6 +296,17 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
       case 'json':
       case 'txt':
       case 'md':
+        // Carica sempre il contenuto completo e aggiornato del file
+        let fileContent = file.content;
+        if (!fileContent || modifiedFileIds.includes(file.id)) {
+          console.log('Ricarico il contenuto del file prima di aprirlo:', file.id);
+          const fullFile = await getFile(file.id);
+          if (fullFile && fullFile.content) {
+            fileContent = fullFile.content;
+            console.log('Contenuto aggiornato caricato:', fileContent);
+          }
+        }
+        
         // Apri il file nell'editor
         addPanel({
           type: 'editor',
@@ -217,8 +316,8 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
           content: { 
             fileName: file.name,
             language: getLanguageFromExtension(extension),
-            value: file.content || `// Contenuto di ${file.name}\n`,
-            fileId: file.id // Aggiungi l'ID del file per il salvataggio
+            value: fileContent || `// Contenuto di ${file.name}\n`,
+            fileId: file.id
           }
         });
         break;
@@ -364,6 +463,9 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
     const parts = currentPath.split('/');
     return parts[parts.length - 1];
   };
+  
+  // Rest of the functions remain the same
+  // ...
   
   // Crea una nuova cartella
   const handleCreateFolder = async () => {
@@ -669,54 +771,19 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
     setShowContextMenu(false);
   };
   
-  // Ottiene l'icona appropriata per il tipo di file
-  const getFileIcon = (item: FileItem) => {
-    if (item.type === 'folder') {
-      return <FiFolder size={24} color="#4299e1" />;
-    }
-    
-    // Icone specifiche per estensione
-    const extension = item.name.split('.').pop()?.toLowerCase() || '';
-    switch (extension) {
-      case 'pdf':
-        return <FiFile size={24} color="#f56565" />;
-      case 'txt':
-        return <FiFile size={24} color="#a0aec0" />;
-      case 'doc':
-      case 'docx':
-        return <FiFile size={24} color="#4299e1" />;
-      case 'xls':
-      case 'xlsx':
-        return <FiFile size={24} color="#48bb78" />;
-      case 'ppt':
-      case 'pptx':
-        return <FiFile size={24} color="#ed8936" />;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif':
-        return <FiFile size={24} color="#667eea" />;
-      case 'js':
-      case 'jsx':
-        return <FiFile size={24} color="#ecc94b" />;
-      case 'html':
-        return <FiFile size={24} color="#e53e3e" />;
-      case 'css':
-        return <FiFile size={24} color="#3182ce" />;
-      case 'json':
-        return <FiFile size={24} color="#d69e2e" />;
-      case 'py':
-        return <FiFile size={24} color="#4299e1" />;
-      default:
-        return <FiFile size={24} />;
-    }
-  };
-  
   return (
     <div className="h-full flex flex-col bg-surface-dark" ref={fileManagerRef}>
       {/* Barra degli strumenti */}
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
+        
+<button 
+  className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
+  onClick={loadFiles}
+  title="Aggiorna"
+>
+  <FiRefreshCw size={18} />
+</button>
           <button 
             className="p-1.5 rounded hover:bg-white/10 text-white/70 hover:text-white"
             onClick={handleGoBack}
@@ -860,56 +927,15 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {filteredItems.map((item) => (
-              <motion.div
+              <FileItemComponent
                 key={item.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className={`p-3 rounded-lg cursor-pointer flex flex-col items-center text-center relative ${
-                  selectedItems.includes(item.id) 
-                    ? 'bg-primary bg-opacity-20 ring-1 ring-primary' 
-                    : 'hover:bg-white/5'
-                }`}
-                onClick={(e) => handleItemSelect(item, e)}
+                file={item}
+                isSelected={selectedItems.includes(item.id)}
+                onSelect={(e) => handleItemSelect(item, e)}
                 onDoubleClick={() => handleItemDoubleClick(item)}
                 onContextMenu={(e) => handleContextMenu(e, item.id)}
-              >
-                {item.isPublic && (
-                  <div className="absolute top-1 right-1 text-yellow-500">
-                    <FiStar size={14} fill="currentColor" />
-                  </div>
-                )}
-                <div className="w-16 h-16 flex items-center justify-center mb-2">
-                  {getFileIcon(item)}
-                </div>
-                
-                {isRenaming && renamingId === item.id ? (
-                  <input
-                    ref={renameInputRef}
-                    type="text"
-                    className="w-full bg-surface rounded py-1 px-2 text-center text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    onBlur={handleRenameComplete}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        handleRenameComplete();
-                      } else if (e.key === 'Escape') {
-                        setIsRenaming(false);
-                        setRenamingId(null);
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="truncate w-full text-sm font-medium">{item.name}</div>
-                )}
-                
-                <div className="text-xs text-white/50">
-                  {item.type === 'folder' 
-                    ? formatDate(item.updatedAt)
-                    : formatFileSize(item.size)
-                  }
-                </div>
-              </motion.div>
+                panelId={panel.id}
+              />
             ))}
           </div>
         ) : (
@@ -962,6 +988,32 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
                     onClick={(e) => handleItemSelect(item, e)}
                     onDoubleClick={() => handleItemDoubleClick(item)}
                     onContextMenu={(e) => handleContextMenu(e, item.id)}
+                    draggable={item.type !== 'folder'}
+                    onDragStart={(e) => {
+                      // Inizia il drag solo per i file (non cartelle)
+                      if (item.type === 'folder') {
+                        e.preventDefault();
+                        return;
+                      }
+                      
+                      console.log('Drag start in list view:', item.name);
+                      
+                      // Imposta i dati del drag
+                      try {
+                        const data = JSON.stringify({
+                          fileId: item.id,
+                          fileName: item.name,
+                          fileType: item.type,
+                          panelId: panel.id
+                        });
+                        
+                        e.dataTransfer.setData('application/json', data);
+                        e.dataTransfer.setData('text/plain', item.name);
+                        e.dataTransfer.effectAllowed = 'copy';
+                      } catch (error) {
+                        console.error("Errore nell'impostazione dei dati drag:", error);
+                      }
+                    }}
                   >
                     <td className="py-2 px-4">
                       <div className="flex items-center">

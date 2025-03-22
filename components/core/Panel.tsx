@@ -9,9 +9,8 @@ import { useSubscription } from '@/hooks/useSubscription'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import PremiumPanelIntegrationBanner from '@/components/premium/PremiumPanelIntegrationBanner'
-
+import { DroppableEditorPanel } from '@/components/core/panels/DroppableEditorPanel'
 // Importazione dinamica del wrapper per i pannelli che supportano il drop
-const DroppableEditorPanel = dynamic(() => import('@/components/core/panels/DropZoneWrapper').then(mod => mod.DroppableEditorPanel))
 
 interface CommonPanelProps {
   panel: PanelType;

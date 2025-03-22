@@ -20,6 +20,23 @@ export interface Panel {
   content?: any; // Contenuto specifico in base al tipo di pannello
 }
 
+export interface PanelContentType {
+  // Campi generici
+  fileName?: string;
+  language?: string;
+  value?: string;
+  fileId?: string;
+  
+  // Per il browser
+  url?: string;
+  
+  // Per le note
+  text?: string;
+  
+  // Per forzare l'aggiornamento
+  timestamp?: number;
+}
+
 // Interfaccia dello stato del workspace
 interface WorkspaceState {
   panels: Panel[];
@@ -71,14 +88,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     })),
   
   // Aggiorna il contenuto del pannello
-  updatePanelContent: (id, content) =>
-    set((state) => ({
-      panels: state.panels.map(panel =>
-        panel.id === id
-          ? { ...panel, content: { ...panel.content, ...content } }
+  updatePanelContent: (panelId, content) => {
+    console.log('Aggiornamento contenuto del pannello:', panelId, content);
+    set(state => ({
+      panels: state.panels.map(panel => 
+        panel.id === panelId 
+          ? { ...panel, content } 
           : panel
       )
-    })),
+    }));
+  },
   
   // Aggiorna la posizione del pannello
   updatePanelPosition: (id, position) =>
