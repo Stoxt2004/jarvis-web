@@ -13,7 +13,10 @@ export interface FileItem {
   userId: string;
   parentId?: string;
   isPublic?: boolean;
-  content?: string; // Assicurati che questo campo sia definito
+  content?: string;
+  // Nuovi campi per Wasabi
+  storageKey?: string;
+  storageUrl?: string;
 }
 
 export const useFiles = () => {
@@ -55,6 +58,8 @@ export const useFiles = () => {
       setIsLoading(false);
     }
   };
+
+  // Resto delle funzioni rimane uguale
   
   // Ottiene un singolo file per ID
   const getFile = async (fileId: string): Promise<FileItem | null> => {
@@ -75,7 +80,7 @@ export const useFiles = () => {
       console.log('Risposta API getFile:', file);
       
       // Se il contenuto non è presente nel file, effettua una richiesta separata per il contenuto
-      if (file && !file.content && file.type !== 'folder') {
+      if (file && !file.content && file.type !== 'folder' && !file.storageUrl) {
         console.log('Contenuto non presente, effettuo richiesta separata');
         const contentResponse = await fetch(`/api/files/content?id=${fileId}`);
         
@@ -333,47 +338,19 @@ export const useFiles = () => {
         throw new Error('File non trovato');
       }
       
-      // Per i file con contenuto testuale, crea un blob e genera un URL
-      if (file.content) {
-        const blob = new Blob([file.content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        
-        // Crea un elemento <a> per scaricare il file
+      // Se il file ha una URL di storage diretta, usala per il download
+      if (file.storageUrl) {
         const a = document.createElement('a');
-        a.href = url;
+        a.href = file.storageUrl;
         a.download = file.name;
         document.body.appendChild(a);
         a.click();
-        
-        // Cleanup
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
         return true;
       }
       
-      // Per i file binari, usa il download endpoint
-      const response = await fetch(`/api/files/download?id=${fileId}`);
-      
-      if (!response.ok) {
-        throw new Error(`Errore (${response.status}): ${response.statusText}`);
-      }
-      
-      // Ottieni il blob dalla risposta
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      
-      // Crea un elemento <a> per scaricare il file
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Cleanup
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
+      // Altrimenti, usa l'API di download
+      window.open(`/api/files/download?id=${fileId}`, '_blank');
       return true;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';

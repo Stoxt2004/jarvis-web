@@ -1,4 +1,6 @@
-// prisma/schema.prisma
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,28 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-}
-
-model Subscription {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  stripeCustomerId String?  @unique
-  stripeSubscriptionId String? @unique
-  stripePriceId   String?
-  stripeCurrentPeriodEnd DateTime?
-  plan            Plan     @default(FREE)
-  status          SubscriptionStatus @default(INACTIVE)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-enum SubscriptionStatus {
-  ACTIVE
-  PAST_DUE
-  CANCELED
-  TRIALING
-  INACTIVE
 }
 
 model Account {
@@ -58,31 +38,25 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
+  id            String         @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?        @unique
   emailVerified DateTime?
-  password      String?
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  password      String?
+  role          String         @default("USER")
+  plan          String         @default("FREE")
+  preferences   Json?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   accounts      Account[]
   sessions      Session[]
-  
-  // Campi aggiuntivi per il profilo utente
-  role          Role      @default(USER)
-  plan          Plan      @default(FREE)
-  preferences   Json?     @default("{}")
-  workspaces    Workspace[]
   files         File[]
-
-  Subscription Subscription?
-
-  AIRequestLog AIRequestLog[]
-
-  CalendarEvent CalendarEvent[]
-
-  Note Note[]
+  notes         Note[]
+  calendars     CalendarEvent[]
+  workspaces    Workspace[]
+  subscriptions Subscription[]
+  aiRequests    AIRequestLog[]
 }
 
 model VerificationToken {
@@ -93,96 +67,95 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// Definizione del ruolo utente
-enum Role {
-  USER
-  ADMIN
+model Subscription {
+  id                     String    @id @default(cuid())
+  userId                 String    @unique
+  stripeCustomerId       String?   @unique
+  stripeSubscriptionId   String?   @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  plan                   String    @default("FREE")
+  status                 String    @default("INACTIVE")
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// Definizione del piano di abbonamento
-enum Plan {
-  FREE
-  PREMIUM
-  TEAM
-}
-
-// Modello per i workspace dell'utente
 model Workspace {
-  id          String   @id @default(cuid())
-  name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  data        Json     @default("{}")
-  isDefault   Boolean  @default(false)
-  files       File[]
-
-  CalendarEvent CalendarEvent[]
-
-  Note Note[]
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  isDefault Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  files     File[]
+  notes     Note[]
+  events    CalendarEvent[]
 }
 
-// Modello per i file dell'utente
 model File {
   id          String    @id @default(cuid())
   name        String
-  type        String    // mime type o tipo personalizzato
-  path        String    // percorso relativo
-  size        Int       // dimensione in bytes
+  type        String
+  size        Int       @default(0)
+  path        String
+  content     String?   @db.Text
+  isPublic    Boolean   @default(false)
+  // Nuovi campi per Wasabi
+  storageKey  String?
+  storageUrl  String?
+  parentId    String?
+  userId      String
+  workspaceId String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  workspaceId String?
-  userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
-  parentId    String?   // per supportare cartelle nidificate
-  parent      File?     @relation("FileToFile", fields: [parentId], references: [id])
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  parent      File?     @relation("FileToFile", fields: [parentId], references: [id], onDelete: SetNull)
   children    File[]    @relation("FileToFile")
-  isPublic    Boolean   @default(false)
-  content     String?   @db.Text
-}
-
-model AIRequestLog {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   // tipo di richiesta: "generate", "chat", ecc.
-  tokenCount  Int      @default(0)
-  successful  Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model CalendarEvent {
-  id            String   @id @default(cuid())
-  title         String
-  description   String?  @db.Text
-  location      String?
-  start         DateTime
-  end           DateTime
-  reminder      Boolean  @default(false)
-  reminderTime  Int      @default(15) // minuti prima
-  color         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  userId        String
-  workspaceId   String?
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace     Workspace? @relation(fields: [workspaceId], references: [id])
 }
 
 model Note {
-  id            String    @id @default(cuid())
-  title         String
-  content       String    @db.Text
-  color         String?   // Colore di sfondo della nota
-  isPinned      Boolean   @default(false)
-  tags          String[]  // Array di tag associati alla nota
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  userId        String
-  workspaceId   String?
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace     Workspace? @relation(fields: [workspaceId], references: [id])
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @default("")
+  color       String?
+  isPinned    Boolean   @default(false)
+  tags        String[]
+  userId      String
+  workspaceId String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+}
+
+model CalendarEvent {
+  id           String    @id @default(cuid())
+  title        String
+  description  String?
+  location     String?
+  start        DateTime
+  end          DateTime
+  reminder     Boolean   @default(false)
+  reminderTime Int       @default(15) // minuti prima
+  color        String?
+  userId       String
+  workspaceId  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace    Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+}
+
+model AIRequestLog {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String    // chat_completion, code_completion, etc.
+  tokenCount  Int
+  successful  Boolean
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -2,14 +2,17 @@
 import { FileItem } from '@/hooks/useFiles';
 import { prisma } from '@/lib/auth/prisma-adapter';
 import { File as DbFile } from '@prisma/client';
+import { WasabiStorageService } from './wasabiStorageService';
 
 /**
  * Servizio per la gestione dei file nell'applicazione
- * Supporta il salvataggio nel database e l'integrazione con servizi cloud
+ * Memorizza i metadati nel database e i contenuti su Wasabi
  */
 export class FileStorageService {
   /**
-   * Salva un file nel database
+   * Salva un file nel sistema
+   * - Metadati nel database
+   * - Contenuto su Wasabi
    */
   static async saveFile({
     name,
@@ -20,6 +23,8 @@ export class FileStorageService {
     workspaceId,
     path,
     parentId,
+    storageKey: existingStorageKey,
+    storageUrl: existingStorageUrl
   }: {
     name: string;
     type: string;
@@ -29,6 +34,8 @@ export class FileStorageService {
     workspaceId?: string;
     path: string;
     parentId?: string;
+    storageKey?: string;
+    storageUrl?: string;
   }): Promise<DbFile> {
     // Assicurati che size sia sempre un numero
     const finalSize = size || 0;
@@ -42,6 +49,49 @@ export class FileStorageService {
       },
     });
   
+    // Variabili per Wasabi
+    let storageKey = existingStorageKey;
+    let storageUrl: string | undefined | null;
+    
+    // Se è un file (non cartella) e non ha già una storageKey o il contenuto è cambiato, carica su Wasabi
+    if (type !== 'folder' && content !== undefined && !existingStorageKey) {
+      try {
+        // Genera una nuova chiave per Wasabi
+        storageKey = WasabiStorageService.generateFileKey(userId, name);
+        
+        // Determina il tipo MIME
+        const contentType = determineContentType(name, type);
+        
+        // Carica su Wasabi (anche se content è stringa vuota)
+        storageUrl = await WasabiStorageService.uploadFile(storageKey, content, contentType);
+        
+        console.log(`File ${name} caricato su Wasabi: ${storageUrl}`);
+      } catch (error) {
+        console.error("Errore durante il caricamento del file su Wasabi:", error);
+        // In caso di errore, continua con il salvataggio nel DB ma senza riferimenti a Wasabi
+      }
+    }
+    // Se il file esiste già e ha già dei riferimenti a Wasabi, ma il contenuto è cambiato
+    else if (existingFile?.storageKey && content !== undefined) {
+      try {
+        // Usa lo storageKey esistente
+        storageKey = existingFile.storageKey;
+        
+        // Determina il tipo MIME
+        const contentType = determineContentType(name, type);
+        
+        // Aggiorna il file su Wasabi
+        storageUrl = await WasabiStorageService.uploadFile(storageKey, content, contentType);
+        
+        console.log(`File ${name} aggiornato su Wasabi: ${storageUrl}`);
+      } catch (error) {
+        console.error("Errore durante l'aggiornamento del file su Wasabi:", error);
+        // In caso di errore, mantieni i riferimenti a Wasabi esistenti
+        storageKey = existingFile.storageKey;
+        storageUrl = existingFile.storageUrl;
+      }
+    }
+  
     if (existingFile) {
       // Se il file esiste, aggiornalo
       return prisma.file.update({
@@ -49,8 +99,11 @@ export class FileStorageService {
         data: {
           name,
           type,
-          size: finalSize, // Usa il valore garantito qui
-          content,
+          size: finalSize,
+          // Se il file è stato caricato su Wasabi, non memorizzare il contenuto nel DB
+          content: storageUrl ? null : content,
+          storageKey,
+          storageUrl,
           updatedAt: new Date(),
         },
       });
@@ -61,9 +114,12 @@ export class FileStorageService {
       data: {
         name,
         type,
-        size: finalSize, // E anche qui
+        size: finalSize,
         path,
-        content,
+        // Se il file è stato caricato su Wasabi, non memorizzare il contenuto nel DB
+        content: storageUrl ? null : content,
+        storageKey,
+        storageUrl,
         parentId,
         userId,
         workspaceId,
@@ -72,28 +128,69 @@ export class FileStorageService {
   }
 
   /**
-   * Recupera un file dal database
+   * Recupera un file completo (metadati + contenuto)
    */
   static async getFile(fileId: string, userId: string): Promise<DbFile | null> {
-    return prisma.file.findFirst({
+    // Trova il file nel database
+    const file = await prisma.file.findFirst({
       where: {
         id: fileId,
         userId,
       },
     });
+    
+    if (!file) {
+      return null;
+    }
+    
+    // Se è una cartella o non ha una chiave di storage, restituisci il file così com'è
+    if (file.type === 'folder' || !file.storageKey) {
+      return file;
+    }
+    
+    try {
+      // Recupera il contenuto da Wasabi
+      const content = await WasabiStorageService.downloadFile(file.storageKey);
+      
+      // Per i file di testo, converti il buffer in stringa
+      if (isTextFile(file.name, file.type)) {
+        return {
+          ...file,
+          content: content.toString('utf-8'),
+        };
+      }
+      
+      // Per altri tipi di file, non includere il contenuto binario nella risposta
+      return file;
+    } catch (error) {
+      console.error('Errore durante il recupero del file da Wasabi:', error);
+      // Restituisci il file senza contenuto in caso di errore
+      return file;
+    }
   }
 
   /**
    * Recupera un file dal percorso
    */
   static async getFileByPath(path: string, userId: string, workspaceId?: string): Promise<DbFile | null> {
-    return prisma.file.findFirst({
+    const file = await prisma.file.findFirst({
       where: {
         path,
         userId,
         workspaceId: workspaceId || null,
       },
     });
+    
+    if (!file) {
+      return null;
+    }
+    
+    // Se è richiesto il contenuto, recuperalo da Wasabi
+    if (file.storageKey && file.type !== 'folder') {
+      return this.getFile(file.id, userId);
+    }
+    
+    return file;
   }
 
   /**
@@ -157,11 +254,17 @@ export class FileStorageService {
       for (const childFile of childFiles) {
         await FileStorageService.deleteFile(childFile.id, userId);
       }
+    } else if (file.storageKey) {
+      // Se non è una cartella e ha una chiave di storage, elimina il file da Wasabi
+      try {
+        await WasabiStorageService.deleteFile(file.storageKey);
+      } catch (error) {
+        console.error('Errore durante l\'eliminazione del file da Wasabi:', error);
+        // Continua anche in caso di errore nell'eliminazione da Wasabi
+      }
     }
 
-    
-
-    // Elimina il file
+    // Elimina il file dal database
     await prisma.file.delete({
       where: {
         id: fileId,
@@ -169,6 +272,9 @@ export class FileStorageService {
     });
   }
   
+  /**
+   * Sposta un file in una nuova cartella
+   */
   static async moveFile(fileId: string, targetFolderId: string, userId: string): Promise<FileItem> {
     // Verifica che l'utente sia il proprietario sia del file che della cartella
     const file = await prisma.file.findFirst({
@@ -216,6 +322,7 @@ export class FileStorageService {
       content: updatedFile.content || undefined
     };
   }
+
   /**
    * Rinomina un file
    */
@@ -251,7 +358,40 @@ export class FileStorageService {
       throw new Error('Esiste già un file con questo nome nella stessa cartella');
     }
 
-    // Aggiorna il nome e il percorso del file
+    // Se il file ha un contenuto su Wasabi, rinominalo
+    if (file.storageKey && file.type !== 'folder') {
+      try {
+        // Genera una nuova chiave per Wasabi
+        const newStorageKey = WasabiStorageService.generateFileKey(userId, newName);
+        
+        // Scarica il contenuto del file
+        const content = await WasabiStorageService.downloadFile(file.storageKey);
+        
+        // Carica il file con la nuova chiave
+        const contentType = determineContentType(newName, file.type);
+        const storageUrl = await WasabiStorageService.uploadFile(newStorageKey, content, contentType);
+        
+        // Elimina il vecchio file
+        await WasabiStorageService.deleteFile(file.storageKey);
+        
+        // Aggiorna il file nel database
+        return prisma.file.update({
+          where: { id: fileId },
+          data: {
+            name: newName,
+            path: newPath,
+            storageKey: newStorageKey,
+            storageUrl,
+            updatedAt: new Date(),
+          },
+        });
+      } catch (error) {
+        console.error('Errore durante la rinominazione del file su Wasabi:', error);
+        throw new Error(`Errore durante la rinominazione del file: ${error}`);
+      }
+    }
+
+    // Se è una cartella o non ha contenuto, aggiorna solo i metadati
     return prisma.file.update({
       where: { id: fileId },
       data: {
@@ -327,21 +467,6 @@ export class FileStorageService {
   }
 
   /**
-   * Ottieni file con tag
-   */
-  static async getFilesByTag(userId: string, tag: string): Promise<DbFile[]> {
-    // In una vera implementazione, dovresti avere una tabella di tag
-    // Per ora, simuliamo cercando nei metadati JSON
-    return prisma.file.findMany({
-      where: {
-        userId,
-        // Questo è un esempio semplificato, in una vera implementazione
-        // dovresti usare una relazione many-to-many tra file e tag
-      },
-    });
-  }
-
-  /**
    * Calcola lo spazio totale utilizzato dall'utente
    */
   static async getUserStorageUsage(userId: string): Promise<number> {
@@ -357,4 +482,78 @@ export class FileStorageService {
     
     return result._sum.size || 0;
   }
+}
+
+/**
+ * Funzioni di utilità
+ */
+
+/**
+ * Determina il tipo di contenuto MIME in base all'estensione del file
+ */
+function determineContentType(fileName: string, fileType: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  
+  const mimeTypes: Record<string, string> = {
+    // Testo
+    'txt': 'text/plain',
+    'html': 'text/html',
+    'css': 'text/css',
+    'csv': 'text/csv',
+    // JavaScript/JSON
+    'js': 'application/javascript',
+    'json': 'application/json',
+    // Immagini
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    // Documenti
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    // Archivi
+    'zip': 'application/zip',
+    'rar': 'application/x-rar-compressed',
+    'gz': 'application/gzip',
+    // Altri
+    'mp3': 'audio/mpeg',
+    'mp4': 'video/mp4',
+  };
+  
+  if (extension && mimeTypes[extension]) {
+    return mimeTypes[extension];
+  }
+  
+  // Tipo generico basato sul tipo di file
+  if (fileType === 'image') return 'image/png';
+  if (fileType === 'video') return 'video/mp4';
+  if (fileType === 'audio') return 'audio/mpeg';
+  
+  // Usa application/octet-stream come fallback
+  return 'application/octet-stream';
+}
+
+/**
+ * Verifica se un file è di tipo testuale
+ */
+function isTextFile(fileName: string, fileType: string): boolean {
+  const textExtensions = [
+    'txt', 'html', 'css', 'js', 'jsx', 'ts', 'tsx', 'json', 'md', 
+    'py', 'java', 'c', 'cpp', 'h', 'cs', 'php', 'rb', 'go', 'rs',
+    'swift', 'kt', 'sh', 'bat', 'ps1', 'sql', 'xml', 'yaml', 'yml',
+    'toml', 'ini', 'cfg', 'conf'
+  ];
+  
+  const extension = fileName.split('.').pop()?.toLowerCase();
+  
+  if (extension && textExtensions.includes(extension)) {
+    return true;
+  }
+  
+  // Tipi generici
+  return ['text', 'code'].includes(fileType);
 }

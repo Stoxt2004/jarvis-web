@@ -4,6 +4,7 @@ import { FiFolder, FiFile, FiStar } from 'react-icons/fi';
 import { useDragDropStore } from '@/lib/store/dragDropStore';
 import { toast } from 'sonner';
 import { useFiles, FileItem as FileItemType } from '@/hooks/useFiles';
+import { useFileSystemStore } from '@/lib/store/fileSystemStore';
 
 // Definizione esplicita di FileItemProps
 interface FileItemProps {
@@ -28,9 +29,10 @@ export default function FileItem({
   icon
 }: FileItemProps) {
   const { startDrag, endDrag } = useDragDropStore();
+  const { addModifiedFileId, markDataAsChanged } = useFileSystemStore();
   const [isDragging, setIsDragging] = useState(false);
   const [isDropTarget, setIsDropTarget] = useState(false);
-  const { moveFile } = useFiles(); // Assicurati che moveFile sia implementato in useFiles
+  const { moveFile } = useFiles();
   
   // Formatta la dimensione del file (implementata localmente)
   const formatFileSize = (bytes?: number) => {
@@ -87,13 +89,7 @@ export default function FileItem({
   
   // Gestisce l'inizio del drag
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    // Solo i file (non le cartelle) possono essere draggati
-    if (file.type === 'folder') {
-      // In questa versione, permettiamo anche alle cartelle di essere trascinate
-      // ma non per essere aperte in un editor, bensì per altre operazioni
-    }
-    
-    console.log('Drag start:', file.name);
+    console.log('Drag start:', file.name, 'ID:', file.id);
     
     // Imposta i dati del drag in modo esplicito
     try {
@@ -111,7 +107,7 @@ export default function FileItem({
       e.dataTransfer.setData('text/plain', file.name);
       
       // Imposta l'effetto di trascinamento
-      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.effectAllowed = 'all'; // Modifica: consenti tutti gli effetti
       
       // Notifica lo store del drag & drop
       startDrag(file.id, file.name, file.type, file.content, panelId);
@@ -121,17 +117,11 @@ export default function FileItem({
     }
     
     setIsDragging(true);
-    
-    // Feedback visivo
-    toast.info(`Trascina ${file.name} in un editor per aprirlo`, {
-      duration: 2000,
-      position: 'bottom-right'
-    });
   };
   
   // Gestisce la fine del drag
   const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-    console.log('Drag end:', file.name);
+    console.log('Drag end:', file.name, 'Effect:', e.dataTransfer.dropEffect);
     setIsDragging(false);
     
     // Verifica se il drop è avvenuto con successo
@@ -147,16 +137,19 @@ export default function FileItem({
   
   // Nuove funzioni per gestire il drop sulle cartelle
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    // Accetta il drop solo se è una cartella e non è la stessa del file trascinato
+    // Accetta il drop solo se è una cartella
     if (file.type === 'folder') {
-      e.preventDefault();
+      e.preventDefault(); // Importante: previene il comportamento di default
       e.stopPropagation();
       
-      // Permetti il drop solo se è un file differente
-      const data = e.dataTransfer.types.includes('application/json');
-      if (data) {
-        // Imposta l'effetto di drop
-        e.dataTransfer.dropEffect = 'move';
+      // Debug del tipi di dati disponibili
+      console.log('DragOver su cartella:', file.name, 'Tipi di dati:', e.dataTransfer.types);
+      
+      // Imposta l'effetto di drop
+      e.dataTransfer.dropEffect = 'move';
+      
+      // Cambia l'aspetto visivo per indicare che è un target di drop valido
+      if (!isDropTarget) {
         setIsDropTarget(true);
       }
     }
@@ -165,6 +158,13 @@ export default function FileItem({
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Assicurati che il drag leave sia effettivamente fuori dall'elemento
+    // e non ad un elemento figlio
+    if (e.currentTarget.contains(e.relatedTarget as Node)) {
+      return;
+    }
+    
     setIsDropTarget(false);
   };
   
@@ -179,13 +179,17 @@ export default function FileItem({
       return;
     }
     
-    console.log('Drop su cartella:', file.name);
+    console.log('Drop su cartella:', file.name, 'ID:', file.id);
+    console.log('Tipi di dati disponibili:', e.dataTransfer.types);
     
+    // Estrai i dati JSON
     const jsonData = e.dataTransfer.getData('application/json');
     if (!jsonData) {
       console.error('Nessun dato JSON trovato nel drop');
       return;
     }
+    
+    console.log('Dati JSON ricevuti:', jsonData);
     
     try {
       const draggedFile = JSON.parse(jsonData);
@@ -196,16 +200,33 @@ export default function FileItem({
         toast.error("Non puoi spostare un elemento dentro sé stesso");
         return;
       }
+
+      // NUOVO: Verifica aggiuntiva per file nulli
+      if (!draggedFile.fileId || !file.id) {
+        console.error('ID file mancante:', { draggedFileId: draggedFile.fileId, targetFolderId: file.id });
+        toast.error("Impossibile completare l'operazione: dati file mancanti");
+        return;
+      }
       
-      console.log(`Spostamento del file ${draggedFile.fileName} nella cartella ${file.name}`);
+      console.log(`Spostamento del file ${draggedFile.fileName} (${draggedFile.fileId}) nella cartella ${file.name} (${file.id})`);
+      
+      // NUOVO: Feedback immediato
+      toast.loading(`Spostamento di ${draggedFile.fileName} in corso...`);
       
       // Esegui lo spostamento del file
       const result = await moveFile(draggedFile.fileId, file.id);
       
       if (result) {
+        // IMPORTANTE: Notifica lo store che i dati sono cambiati
+        console.log('Contrassegno file come modificato:', draggedFile.fileId);
+        addModifiedFileId(draggedFile.fileId);
+        markDataAsChanged();
+        
         toast.success(`${draggedFile.fileName} spostato in ${file.name}`);
+        
         // Notifica il padre per aggiornare la lista dei file
         if (onFileDropped) {
+          console.log('Chiamata callback onFileDropped');
           onFileDropped(draggedFile.fileId, file.id);
         }
       } else {
@@ -215,6 +236,13 @@ export default function FileItem({
       console.error('Errore nello spostamento del file:', error);
       toast.error('Errore nello spostamento del file');
     }
+  };
+  
+  // Aggiungi un attributo data- per identificare meglio l'elemento nel DOM
+  const dataAttributes = {
+    'data-file-id': file.id,
+    'data-file-type': file.type,
+    'data-is-folder': file.type === 'folder' ? 'true' : 'false'
   };
   
   return (
@@ -233,12 +261,14 @@ export default function FileItem({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
+      onDragEnter={handleDragOver} // Aggiungiamo anche un handler per dragEnter
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{
         transition: 'transform 0.2s, opacity 0.2s, background-color 0.2s',
         transform: isDragging ? 'scale(0.95)' : isDropTarget ? 'scale(1.05)' : 'scale(1)'
       }}
+      {...dataAttributes}
     >
       {file.isPublic && (
         <div className="absolute top-1 right-1 text-yellow-500">

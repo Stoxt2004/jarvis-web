@@ -63,15 +63,7 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
   } = useFiles()
   
   // Carica i file dalla cartella corrente
-  const loadFiles = async () => {
-    try {
-      const files = await getFiles(currentFolderId || undefined);
-      setItems(files);
-    } catch (error) {
-      console.error("Errore nel caricamento dei file:", error);
-      toast.error("Si è verificato un errore durante il caricamento dei file");
-    }
-  };
+  
 
   // Carica i file all'avvio o quando cambia la cartella
   useEffect(() => {
@@ -98,7 +90,7 @@ export default function FileManagerPanel({ panel }: FileManagerPanelProps) {
       loadFiles();
       clearModifiedFileIds(); // Pulisci dopo il ricaricamento
     }
-  }, [modifiedFileIds, loadFiles, clearModifiedFileIds]);
+  }, [modifiedFileIds]);
   
   // Gestisci il click fuori dal menu contestuale per chiuderlo
   useEffect(() => {
@@ -503,13 +495,16 @@ const getFileIcon = (item: FileItem) => {
         name: finalFileName,
         type: finalFileName.split('.').pop() || 'txt',
         size: 0,
-        content: '',
+        content: '', // Specifica esplicitamente un contenuto vuoto
         path: filePath,
         parentId: currentFolderId || undefined
       };
       
+      console.log('Creando nuovo file con dati:', newFile);
+      
       const result = await saveFile(newFile);
       if (result) {
+        console.log('File creato con successo:', result);
         loadFiles(); // Ricarica i file
         
         // Dopo aver caricato i file, apri l'editor per il nuovo file
@@ -752,8 +747,36 @@ const getFileIcon = (item: FileItem) => {
 
   const handleFileDropped = (fileId: string, targetFolderId: string) => {
     console.log(`File ${fileId} spostato nella cartella ${targetFolderId}, ricarico la vista`);
-    // Ricarica la lista dei file per riflettere i cambiamenti
-    loadFiles();
+    
+    // Aggiungi esplicitamente il file modificato allo store
+    // Ottieni le funzioni dallo store
+    const { addModifiedFileId, markDataAsChanged } = useFileSystemStore.getState();
+    addModifiedFileId(fileId);
+    markDataAsChanged();
+    
+    // Piccolo ritardo per garantire che l'API sia stata completata
+    setTimeout(() => {
+      // Ricarica immediatamente per mostrare la modifica
+      loadFiles();
+    }, 300);
+  };
+  
+  // Miglioramento della funzione loadFiles
+  const loadFiles = async () => {
+    try {
+      console.log('Caricamento file dalla cartella:', currentFolderId || 'root');
+      
+      // Non utilizzare setIsLoading se non esiste nel componente
+      // Puoi usare una variabile di stato locale se necessario
+      
+      const files = await getFiles(currentFolderId || undefined);
+      console.log('File caricati con successo:', files.length, files.map(f => f.name).join(', '));
+      
+      setItems(files);
+    } catch (error) {
+      console.error("Errore nel caricamento dei file:", error);
+      toast.error("Si è verificato un errore durante il caricamento dei file");
+    }
   };
   
   // Incolla gli elementi dagli appunti (simulato)
