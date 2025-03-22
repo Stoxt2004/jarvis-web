@@ -1,5 +1,5 @@
 // components/core/PanelLinkMenu.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FiLink, FiCode, FiMove, FiMaximize, FiCheckCircle } from 'react-icons/fi';
 import { useWorkspaceStore, Panel } from '@/lib/store/workspaceStore';
 import { usePanelLinks, LinkType } from '@/hooks/usePanelLinks';
@@ -14,7 +14,7 @@ interface PanelLinkMenuProps {
 
 export default function PanelLinkMenu({ panel, onClose, showPremiumBanner }: PanelLinkMenuProps) {
   const { panels } = useWorkspaceStore();
-  const { hasLink, toggleLink, getLinkedPanels, syncPanels } = usePanelLinks();
+  const { hasLink, toggleLink, getLinkedPanels, syncPanels, links } = usePanelLinks();
   const { subscription } = useSubscription();
   const [activeTab, setActiveTab] = useState<LinkType>('content');
   
@@ -31,15 +31,25 @@ export default function PanelLinkMenu({ panel, onClose, showPremiumBanner }: Pan
   };
   
   // Gestione del click sul pulsante di collegamento
-  const handleLinkToggle = (targetPanel: Panel) => {
+  // Nella funzione PanelLinkMenu che chiama toggleLink
+  // In PanelLinkMenu.tsx
+  // In PanelLinkMenu.tsx
+const handleLinkToggle = (targetPanel: Panel) => {
     // Controlla se l'utente ha un piano premium
     if (!subscription.isPremium) {
       showPremiumBanner();
       return;
     }
     
+    console.log('Prima del toggle - Collegamenti esistenti:', links);
+    console.log('Tentativo di collegare:', panel.id, targetPanel.id, activeTab);
+    
     // Attiva/disattiva il collegamento
     toggleLink(panel.id, targetPanel.id, activeTab);
+    
+    // Verifica immediatamente lo stato del collegamento
+    console.log('Dopo il toggle - Collegamenti esistenti:', links);
+    console.log('Link attivo ora?', hasLink(panel.id, targetPanel.id, activeTab));
   };
   
   // Gestione della sincronizzazione manuale
@@ -50,16 +60,37 @@ export default function PanelLinkMenu({ panel, onClose, showPremiumBanner }: Pan
       return;
     }
     
+    // Log dettagliati sul contenuto prima della sincronizzazione
+    console.log('Contenuto pannello sorgente:', panel.content);
+    console.log('Contenuto pannello target prima della sincronizzazione:', targetPanel.content);
+    
     // Esegui la sincronizzazione
-    syncPanels(panel.id, targetPanel.id, activeTab);
+    syncPanels(panel.id, targetPanel.id, 'content');
+    
+    // Verifica dopo la sincronizzazione
+    // Recupera i pannelli aggiornati
+    const updatedSourcePanel = useWorkspaceStore.getState().panels.find(p => p.id === panel.id);
+    const updatedTargetPanel = useWorkspaceStore.getState().panels.find(p => p.id === targetPanel.id);
+    
+    console.log('Contenuto pannello target dopo la sincronizzazione:', updatedTargetPanel?.content);
+    console.log('I contenuti sono identici?', 
+      JSON.stringify(updatedSourcePanel?.content) === JSON.stringify(updatedTargetPanel?.content));
   };
+  
+  useEffect(() => {
+    console.log("PanelLinkMenu montato con panel:", panel.id);
+    console.log("Collegamenti attuali:", links);
+    
+    return () => {
+      console.log("PanelLinkMenu smontato, collegamenti finali:", links);
+    };
+  }, [panel.id, links]);
   
   // Ottiene il titolo del tab
   const getTabTitle = (linkType: LinkType): string => {
     switch (linkType) {
       case 'content': return 'Contenuto';
-      case 'position': return 'Posizione';
-      case 'size': return 'Dimensione';
+      
       default: return linkType;
     }
   };
@@ -68,8 +99,7 @@ export default function PanelLinkMenu({ panel, onClose, showPremiumBanner }: Pan
   const getTabIcon = (linkType: LinkType) => {
     switch (linkType) {
       case 'content': return <FiCode size={14} />;
-      case 'position': return <FiMove size={14} />;
-      case 'size': return <FiMaximize size={14} />;
+     
       default: return null;
     }
   };
@@ -120,38 +150,12 @@ export default function PanelLinkMenu({ panel, onClose, showPremiumBanner }: Pan
         </button>
       </div>
       
-      {/* Tab per i diversi tipi di collegamento */}
-      <div style={{ 
-        display: 'flex', 
-        borderBottom: '1px solid rgba(255,255,255,0.1)'
-      }}>
-        {(['content', 'position', 'size'] as LinkType[]).map((linkType) => (
-          <button
-            key={linkType}
-            onClick={() => setActiveTab(linkType)}
-            style={{ 
-              flex: 1,
-              background: activeTab === linkType 
-                ? 'rgba(167, 139, 250, 0.2)' 
-                : 'transparent',
-              border: 'none',
-              borderBottom: activeTab === linkType 
-                ? '2px solid #A78BFA' 
-                : '2px solid transparent',
-              padding: '8px 12px',
-              fontSize: '12px',
-              color: activeTab === linkType ? '#fff' : 'rgba(255,255,255,0.6)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}
-          >
-            {getTabIcon(linkType)}
-            <span>{getTabTitle(linkType)}</span>
-          </button>
-        ))}
+      <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <FiLink style={{ color: '#A78BFA' }} />
+          <span style={{ fontSize: '14px', color: '#fff' }}>Condivisione contenuti</span>
+        </div>
+        {/* ... */}
       </div>
       
       {/* Lista pannelli */}

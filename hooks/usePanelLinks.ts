@@ -4,7 +4,7 @@ import { useWorkspaceStore, Panel } from '@/lib/store/workspaceStore';
 import { toast } from 'sonner';
 
 // Definizione dei tipi di collegamenti possibili tra pannelli
-export type LinkType = 'content' | 'position' | 'size';
+export type LinkType = 'content';
 
 // Interfaccia per un collegamento tra pannelli
 export interface PanelLink {
@@ -104,46 +104,41 @@ export const usePanelLinks = () => {
   const getLinkName = (linkType: LinkType): string => {
     switch (linkType) {
       case 'content': return 'contenuto';
-      case 'position': return 'posizione';
-      case 'size': return 'dimensione';
       default: return linkType;
     }
   };
 
   // Effettua una sincronizzazione tra pannelli
-  const syncPanels = (sourceId: string, targetId: string, linkType: LinkType): void => {
-    const sourcePanel = panels.find(p => p.id === sourceId);
-    const targetPanel = panels.find(p => p.id === targetId);
-    
-    if (!sourcePanel || !targetPanel) {
-      toast.error('Pannello non trovato');
-      return;
+  // In usePanelLinks.ts o panelLinkStore.ts
+const syncPanels = (sourceId: string, targetId: string, linkType: LinkType): void => {
+  const sourcePanel = panels.find(p => p.id === sourceId);
+  const targetPanel = panels.find(p => p.id === targetId);
+  
+  if (!sourcePanel || !targetPanel) {
+    toast.error('Pannello non trovato');
+    return;
+  }
+  
+  if (sourcePanel.type === targetPanel.type) {
+    // Per gli editor, sincronizza il contenuto completo
+    if (sourcePanel.type === 'editor' && targetPanel.type === 'editor') {
+      console.log('Sincronizzazione di contenuto tra editor');
+      console.log('Contenuto sorgente:', sourcePanel.content);
+      
+      // Clona l'intero oggetto content
+      const newContent = {...sourcePanel.content};
+      
+      // Aggiorna il contenuto del pannello target
+      updatePanelContent(targetId, newContent);
+      
+      toast.success('Contenuto dell\'editor sincronizzato');
+    } else {
+      toast.error('La sincronizzazione di questo tipo di pannelli non è ancora implementata');
     }
-    
-    switch (linkType) {
-      case 'content':
-        // Sincronizza il contenuto (se i pannelli sono dello stesso tipo)
-        if (sourcePanel.type === targetPanel.type) {
-          updatePanelContent(targetId, sourcePanel.content);
-          toast.success('Contenuto sincronizzato');
-        } else {
-          toast.error('I pannelli devono essere dello stesso tipo per sincronizzare il contenuto');
-        }
-        break;
-        
-      case 'position':
-        // Sincronizza la posizione
-        updatePanelPosition(targetId, { ...sourcePanel.position });
-        toast.success('Posizione sincronizzata');
-        break;
-        
-      case 'size':
-        // Sincronizza la dimensione
-        updatePanelSize(targetId, { ...sourcePanel.size });
-        toast.success('Dimensione sincronizzata');
-        break;
-    }
-  };
+  } else {
+    toast.error('I pannelli devono essere dello stesso tipo per sincronizzare il contenuto');
+  }
+};
 
   // Sincronizza automaticamente i pannelli collegati quando necessario
   useEffect(() => {

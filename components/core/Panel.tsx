@@ -2,15 +2,13 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { FiX, FiMinimize2, FiMaximize2, FiMinus, FiCpu, FiLink } from 'react-icons/fi'
+import { FiX, FiMinimize2, FiMaximize2, FiMinus, FiCpu } from 'react-icons/fi'
 import { Panel as PanelType, useWorkspaceStore } from '@/lib/store/workspaceStore'
-import { usePanelLinks } from '@/hooks/usePanelLinks'
+import { useDragDropStore } from '@/lib/store/dragDropStore'
 import { useSubscription } from '@/hooks/useSubscription'
 import { toast } from 'sonner'
 import dynamic from 'next/dynamic'
 import PremiumPanelIntegrationBanner from '@/components/premium/PremiumPanelIntegrationBanner'
-import PanelLinkMenu from '@/components/core/PanelLinkMenu'
-import { usePanelIntegrationStore } from '@/lib/store/usePanelIntegrationStore'
 
 // Importazione dinamica del wrapper per i pannelli che supportano il drop
 const DroppableEditorPanel = dynamic(() => import('@/components/core/panels/DropZoneWrapper').then(mod => mod.DroppableEditorPanel))
@@ -47,45 +45,30 @@ export default function Panel({ panel }: PanelProps) {
     minimizePanel,
     restorePanel,
     updatePanelPosition,
-    updatePanelSize
+    updatePanelSize,
+    panels
   } = useWorkspaceStore();
 
-  // Importa dallo store corretto
-  
+  // Importa dallo store per drag & drop
   const { 
     selectedPanelsForAI, 
     addPanelToAISelection, 
     removePanelFromAISelection 
-  } = usePanelIntegrationStore();
-  
-  // Utilizziamo il nostro hook personalizzato per i collegamenti tra pannelli
-  const { 
-    hasLink, 
-    toggleLink, 
-    getPanelLinks, 
-    getLinkedPanels, 
-    syncPanels 
-  } = usePanelLinks();
+  } = useDragDropStore();
 
   const { subscription, hasAccess } = useSubscription();
 
   const panelRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [showLinkMenu, setShowLinkMenu] = useState(false);
   const [showPremiumBanner, setShowPremiumBanner] = useState(false);
-  const linkedPanelIds = getLinkedPanels(panel.id);
+  
   // Riferimenti per il trascinamento/ridimensionamento
   const dragStartRef = useRef({ x: 0, y: 0, panelX: 0, panelY: 0 });
   const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0 });
-  const linkedPanelsMovedRef = useRef<Set<string>>(new Set());
-
+  
   // Verifica se il pannello è selezionato per l'analisi AI
   const isSelectedForAI = selectedPanelsForAI.includes(panel.id);
-  
-  // Array di pannelli collegati (per evidenziare l'icona del collegamento)
-  const linkedPanels = getLinkedPanels(panel.id);
-  const hasAnyLinks = linkedPanels.length > 0;
 
   // Renderizza il componente del pannello in base al tipo
   const renderPanelContent = useCallback(() => {
@@ -101,9 +84,6 @@ export default function Panel({ panel }: PanelProps) {
     e.preventDefault();
     setActivePanel(panel.id);
     setIsDragging(true);
-    
-    // Resetta l'array dei pannelli collegati già spostati
-    linkedPanelsMovedRef.current.clear();
     
     dragStartRef.current = {
       x: e.clientX,
@@ -136,35 +116,9 @@ export default function Panel({ panel }: PanelProps) {
     // Usa left e top invece di transform
     panelRef.current.style.left = `${newX}px`;
     panelRef.current.style.top = `${newY}px`;
-    // Rimuovi transform
     panelRef.current.style.transform = 'none';
     
-    // Se l'utente ha un abbonamento premium, sposta anche i pannelli collegati
-    if (subscription.isPremium) {
-      // Trova i pannelli collegati con "position"
-      const linkedPanelsWithPositionLink = useWorkspaceStore.getState().panels.filter(p => {
-        // Verifica se c'è un collegamento di posizione attivo
-        return hasLink(panel.id, p.id, 'position') && !linkedPanelsMovedRef.current.has(p.id);
-      });
-      
-      // Aggiungi i pannelli attualmente spostati al set per evitare cicli infiniti
-      linkedPanelsWithPositionLink.forEach(p => linkedPanelsMovedRef.current.add(p.id));
-      
-      // Aggiorna la posizione dei pannelli collegati
-      linkedPanelsWithPositionLink.forEach(linkedPanel => {
-        const element = document.querySelector(`[data-panel-id="${linkedPanel.id}"]`) as HTMLElement;
-        if (element) {
-          const newLinkedX = linkedPanel.position.x + deltaX;
-          const newLinkedY = linkedPanel.position.y + deltaY;
-          
-          // Usa left e top invece di transform
-          element.style.left = `${newLinkedX}px`;
-          element.style.top = `${newLinkedY}px`;
-          element.style.transform = 'none';
-        }
-      });
-    }
-  }, [isDragging, subscription.isPremium, hasLink]);
+  }, [isDragging]);
 
   // Termina il trascinamento
   const handleDragEnd = useCallback((e: MouseEvent) => {
@@ -189,25 +143,8 @@ export default function Panel({ panel }: PanelProps) {
     // Aggiorna lo stato nel store
     updatePanelPosition(panel.id, { x: finalX, y: finalY });
     
-    // Se l'utente ha un abbonamento premium, aggiorna anche i pannelli collegati
-    if (subscription.isPremium) {
-      // Trova i pannelli collegati con "position"
-      const panelsToUpdate = [...linkedPanelsMovedRef.current];
-      
-      // Aggiorna la posizione dei pannelli collegati nello store
-      panelsToUpdate.forEach(panelId => {
-        const linkedPanel = useWorkspaceStore.getState().panels.find(p => p.id === panelId);
-        if (linkedPanel) {
-          const newLinkedX = linkedPanel.position.x + deltaX;
-          const newLinkedY = linkedPanel.position.y + deltaY;
-          updatePanelPosition(panelId, { x: newLinkedX, y: newLinkedY });
-        }
-      });
-    }
-    
     setIsDragging(false);
-    linkedPanelsMovedRef.current.clear();
-  }, [isDragging, panel.id, subscription.isPremium, updatePanelPosition]);
+  }, [isDragging, panel.id, updatePanelPosition]);
 
   // Inizia il ridimensionamento
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -215,9 +152,6 @@ export default function Panel({ panel }: PanelProps) {
     e.stopPropagation();
     setActivePanel(panel.id);
     setIsResizing(true);
-    
-    // Resetta l'array dei pannelli collegati già ridimensionati
-    linkedPanelsMovedRef.current.clear();
     
     resizeStartRef.current = {
       x: e.clientX,
@@ -249,31 +183,7 @@ export default function Panel({ panel }: PanelProps) {
     panelRef.current.style.width = `${newWidth}px`;
     panelRef.current.style.height = `${newHeight}px`;
     
-    // Se l'utente ha un abbonamento premium, ridimensiona anche i pannelli collegati
-    if (subscription.isPremium) {
-      // Trova i pannelli collegati con "size"
-      const linkedPanelsWithSizeLink = useWorkspaceStore.getState().panels.filter(p => {
-        // Verifica se c'è un collegamento di dimensione attivo
-        return hasLink(panel.id, p.id, 'size') && !linkedPanelsMovedRef.current.has(p.id);
-      });
-      
-      // Aggiungi i pannelli attualmente ridimensionati al set per evitare cicli infiniti
-      linkedPanelsWithSizeLink.forEach(p => linkedPanelsMovedRef.current.add(p.id));
-      
-      // Aggiorna la dimensione dei pannelli collegati
-      linkedPanelsWithSizeLink.forEach(linkedPanel => {
-        const element = document.querySelector(`[data-panel-id="${linkedPanel.id}"]`) as HTMLElement;
-        if (element) {
-          const newLinkedWidth = linkedPanel.size.width + deltaX;
-          const newLinkedHeight = linkedPanel.size.height + deltaY;
-          
-          // Aggiorna le dimensioni visivamente
-          element.style.width = `${Math.max(300, newLinkedWidth)}px`;
-          element.style.height = `${Math.max(200, newLinkedHeight)}px`;
-        }
-      });
-    }
-  }, [isResizing, panel.position.x, panel.position.y, subscription.isPremium, hasLink]);
+  }, [isResizing, panel.position.x, panel.position.y]);
 
   // Termina il ridimensionamento
   const handleResizeEnd = useCallback((e: MouseEvent) => {
@@ -296,28 +206,8 @@ export default function Panel({ panel }: PanelProps) {
     // Aggiorna lo stato nel store
     updatePanelSize(panel.id, { width: finalWidth, height: finalHeight });
     
-    // Se l'utente ha un abbonamento premium, aggiorna anche i pannelli collegati
-    if (subscription.isPremium) {
-      // Trova i pannelli collegati con "size"
-      const panelsToUpdate = [...linkedPanelsMovedRef.current];
-      
-      // Aggiorna la dimensione dei pannelli collegati nello store
-      panelsToUpdate.forEach(panelId => {
-        const linkedPanel = useWorkspaceStore.getState().panels.find(p => p.id === panelId);
-        if (linkedPanel) {
-          const newLinkedWidth = linkedPanel.size.width + deltaX;
-          const newLinkedHeight = linkedPanel.size.height + deltaY;
-          updatePanelSize(panelId, { 
-            width: Math.max(300, newLinkedWidth), 
-            height: Math.max(200, newLinkedHeight) 
-          });
-        }
-      });
-    }
-    
     setIsResizing(false);
-    linkedPanelsMovedRef.current.clear();
-  }, [isResizing, panel.id, panel.position.x, panel.position.y, updatePanelSize, subscription.isPremium]);
+  }, [isResizing, panel.id, panel.position.x, panel.position.y, updatePanelSize]);
 
   // Toggle selezione AI
   const toggleAISelection = useCallback((e: React.MouseEvent) => {
@@ -352,20 +242,6 @@ export default function Panel({ panel }: PanelProps) {
     addPanelToAISelection
   ]);
 
-  // Gestisce il toggle del menu per i collegamenti tra pannelli
-  const handleLinkMenuToggle = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    // Verifica se l'utente ha un abbonamento premium
-    if (!subscription.isPremium) {
-      setShowPremiumBanner(true);
-      return;
-    }
-    
-    // L'utente ha un abbonamento premium, mostra il menu normalmente
-    setShowLinkMenu(!showLinkMenu);
-  }, [subscription.isPremium, showLinkMenu]);
-
   // Aggiungi e rimuovi gli event listener quando necessario
   useEffect(() => {
     if (isDragging) {
@@ -390,6 +266,17 @@ export default function Panel({ panel }: PanelProps) {
       window.removeEventListener('mouseup', handleResizeEnd);
     };
   }, [isResizing, handleResize, handleResizeEnd]);
+
+  // Verifica dell'esistenza degli elementi DOM (per debug)
+  useEffect(() => {
+    // Verifica che gli elementi DOM abbiano gli attributi data-panel-id
+    if (panels.length > 0) {
+      panels.forEach(p => {
+        const element = document.querySelector(`[data-panel-id="${p.id}"]`);
+        console.log(`Elemento per pannello ${p.id}:`, !!element);
+      });
+    }
+  }, [panels]);
 
   // Se il pannello è minimizzato, non renderizzare nulla
   if (panel.isMinimized) return null;
@@ -446,21 +333,6 @@ export default function Panel({ panel }: PanelProps) {
                 </button>
               )}
 
-              {/* Pulsante per integrare pannelli */}
-              <button 
-                onClick={handleLinkMenuToggle}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: hasAnyLinks ? '#A47864' : '#A78BFA', 
-                  cursor: 'pointer',
-                  opacity: hasAnyLinks ? 1 : 0.7
-                }}
-                title="Collega con altri pannelli"
-              >
-                <FiLink />
-              </button>
-
               <button 
                 onClick={(e) => { e.stopPropagation(); minimizePanel(panel.id); }}
                 style={{ background: 'none', border: 'none', color: '#A78BFA', cursor: 'pointer' }}
@@ -497,15 +369,6 @@ export default function Panel({ panel }: PanelProps) {
         {showPremiumBanner && (
           <PremiumPanelIntegrationBanner onClose={() => setShowPremiumBanner(false)} />
         )}
-        
-        {/* Menu per collegamenti tra pannelli */}
-        {showLinkMenu && (
-          <PanelLinkMenu 
-            panel={panel} 
-            onClose={() => setShowLinkMenu(false)} 
-            showPremiumBanner={() => setShowPremiumBanner(true)} 
-          />
-        )}
       </>
     );
   }
@@ -526,9 +389,7 @@ export default function Panel({ panel }: PanelProps) {
           borderRadius: '8px',
           boxShadow: activePanel === panel.id 
             ? '0 0 20px rgba(167, 139, 250, 0.3)' 
-            : hasAnyLinks
-              ? '0 0 15px rgba(164, 120, 100, 0.3)'
-              : '0 0 15px rgba(0,0,0,0.3)',
+            : '0 0 15px rgba(0,0,0,0.3)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -536,11 +397,9 @@ export default function Panel({ panel }: PanelProps) {
           zIndex: activePanel === panel.id ? 10 : 1,
           border: isSelectedForAI 
             ? '1px solid rgba(164, 120, 100, 0.8)' 
-            : hasAnyLinks
-              ? '1px solid rgba(164, 120, 100, 0.5)'
-              : activePanel === panel.id 
-                ? '1px solid rgba(167, 139, 250, 0.5)' 
-                : '1px solid rgba(255,255,255,0.05)'
+            : activePanel === panel.id 
+              ? '1px solid rgba(167, 139, 250, 0.5)' 
+              : '1px solid rgba(255,255,255,0.05)'
         }}
         onClick={() => setActivePanel(panel.id)}
       >
@@ -577,21 +436,6 @@ export default function Panel({ panel }: PanelProps) {
                 <FiCpu />
               </button>
             )}
-
-            {/* Pulsante per integrare pannelli */}
-            <button 
-              onClick={handleLinkMenuToggle}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: hasAnyLinks ? '#A47864' : '#A78BFA', 
-                cursor: 'pointer',
-                opacity: hasAnyLinks ? 1 : 0.7
-              }}
-              title="Collega con altri pannelli"
-            >
-              <FiLink />
-            </button>
 
             <button 
               onClick={(e) => { e.stopPropagation(); minimizePanel(panel.id); }}
@@ -637,15 +481,6 @@ export default function Panel({ panel }: PanelProps) {
           }}
         />
       </div>
-
-      {/* Menu per collegamenti tra pannelli */}
-      {showLinkMenu && (
-        <PanelLinkMenu 
-          panel={panel} 
-          onClose={() => setShowLinkMenu(false)} 
-          showPremiumBanner={() => setShowPremiumBanner(true)} 
-        />
-      )}
 
       {/* Banner di funzionalità premium */}
       {showPremiumBanner && (
