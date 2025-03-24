@@ -48,7 +48,8 @@ export async function checkAIRequestLimits(userId: string): Promise<RequestLimit
       where: { id: userId },
       select: { 
         plan: true,
-        subscription: {
+        // Modificata questa riga per usare subscriptions (plurale) invece di subscription
+        subscriptions: {
           select: {
             status: true
           }
@@ -63,8 +64,11 @@ export async function checkAIRequestLimits(userId: string): Promise<RequestLimit
     // Determina i limiti in base al piano
     const plan = (user.plan as PlanType) || 'FREE';
     
+    // Modifica qui: controlla subscriptions invece di subscription
     // Se l'abbonamento non è attivo e il piano non è FREE, usiamo i limiti del FREE
-    const isSubscriptionActive = user.subscription?.status === 'ACTIVE' || user.subscription?.status === 'TRIALING';
+    // Nota: subscriptions è un array, quindi dobbiamo prendere il primo elemento se esiste
+    const subscription = user.subscriptions?.[0];
+    const isSubscriptionActive = subscription?.status === 'ACTIVE' || subscription?.status === 'TRIALING';
     const effectivePlan = (plan !== 'FREE' && !isSubscriptionActive) ? 'FREE' : plan;
     
     const limits = getPlanLimits(effectivePlan);

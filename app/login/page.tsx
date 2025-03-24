@@ -1,7 +1,7 @@
 // src/app/login/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -10,10 +10,11 @@ import { FcGoogle } from "react-icons/fc";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function LoginPage() {
+// Separated login form component that uses useSearchParams
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || "/dashboard";
+  const redirectUrl = searchParams?.get("redirect") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -82,6 +83,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative" 
       style={{ background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.surface} 100%)` }}>
+        
       
       {/* Pattern di sfondo con animazione */}
       <motion.div 
@@ -327,6 +329,23 @@ export default function LoginPage() {
           </motion.span>
         </motion.p>
       </motion.div>
+      
     </div>
+  );
+}
+
+// Default export with Suspense wrapper
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <FiLoader className="w-10 h-10 mx-auto animate-spin text-primary" />
+          <p className="mt-4 text-white">Loading login page...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -157,14 +157,18 @@ export async function PUT(request: NextRequest) {
     }
 
     // Altrimenti, aggiorna il contenuto del file
-const updatedFile = await FileStorageService.saveFile({
-    ...existingFile,
-    ...(data.content !== undefined && { content: data.content }),
-    ...(data.size !== undefined && { size: data.size }),
-    userId: session.user.id,
-    workspaceId: existingFile.workspaceId || undefined, // Converti null in undefined
-    parentId: existingFile.parentId || undefined,       // Converti null in undefined
-  });
+    const updatedFile = await FileStorageService.saveFile({
+      name: existingFile.name,
+      type: existingFile.type,
+      size: data.size !== undefined ? data.size : existingFile.size,
+      content: data.content !== undefined ? data.content : existingFile.content,
+      userId: session.user.id,
+      workspaceId: existingFile.workspaceId || undefined, // Converti null in undefined
+      path: existingFile.path,
+      parentId: existingFile.parentId || undefined,       // Converti null in undefined
+      storageKey: existingFile.storageKey || undefined,   // Converti null in undefined
+      storageUrl: existingFile.storageUrl || undefined    // Converti null in undefined
+    });
 
     return NextResponse.json(updatedFile);
   } catch (error: any) {

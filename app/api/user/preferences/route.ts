@@ -49,9 +49,9 @@ export async function GET(request: NextRequest) {
     };
 
     // Unisci le preferenze predefinite con quelle dell'utente
-    const preferences = user.preferences 
-      ? { ...defaultPreferences, ...user.preferences }
-      : defaultPreferences;
+    const preferences = typeof user.preferences === 'object' && user.preferences !== null && !Array.isArray(user.preferences)
+  ? { ...defaultPreferences, ...user.preferences }
+  : defaultPreferences;
 
     return NextResponse.json({ preferences }, { status: 200 });
   } catch (error) {

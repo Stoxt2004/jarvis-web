@@ -16,7 +16,7 @@ export interface ResourceUsage {
     limit: number;
     percentage: number; // 0-100
     isExceeded: boolean;
-    resetTime?: Date;  // Orario di reset (fine giornata)
+    resetTime?: Date;  // Added as optional property
   };
   workspaces: {
     used: number;
@@ -39,20 +39,27 @@ export function useResourceUsage(currentPanelCount: number = 0): ResourceUsage {
   const { data: session, status } = useSession();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usage, setUsage] = useState({
-    storage: { used: 0, limit: 5, percentage: 0, isExceeded: false },
-    aiRequests: { used: 0, limit: 50, percentage: 0, isExceeded: false },
-    workspaces: { used: 0, limit: 1, percentage: 0, isExceeded: false },
-    panels: { used: currentPanelCount, limit: 3, percentage: 0, isExceeded: false }
-  });
-
-  // Calcola l'orario di reset per le richieste AI (fine giornata)
   const calculateResetTime = () => {
     const now = new Date();
     const resetTime = new Date(now);
     resetTime.setHours(23, 59, 59, 999); // Fine della giornata corrente
     return resetTime;
   };
+  const [usage, setUsage] = useState({
+    storage: { used: 0, limit: 5, percentage: 0, isExceeded: false },
+    aiRequests: { 
+      used: 0, 
+      limit: 50, 
+      percentage: 0, 
+      isExceeded: false,
+      resetTime: calculateResetTime() // Include this when initializing
+    },
+    workspaces: { used: 0, limit: 1, percentage: 0, isExceeded: false },
+    panels: { used: currentPanelCount, limit: 3, percentage: 0, isExceeded: false }
+  });
+
+  // Calcola l'orario di reset per le richieste AI (fine giornata)
+  
 
   // Funzione per recuperare i dati di utilizzo
   const fetchUsageData = useCallback(async () => {

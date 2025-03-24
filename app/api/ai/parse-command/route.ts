@@ -6,6 +6,19 @@ import { prisma } from "@/lib/auth/prisma-adapter";
 import { getPlanLimits } from "@/lib/stripe/config";
 import OpenAI from 'openai';
 
+// Track processed conversation IDs to avoid duplicate counts
+const processedConversations = new Map<string, number>();
+
+// Periodically clean up the map to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, timestamp] of processedConversations.entries()) {
+    if (now - timestamp > 3600000) { // 1 hour
+      processedConversations.delete(key);
+    }
+  }
+}, 3600000);
+
 // Inizializza il client OpenAI con la chiave API
 let openaiInstance: OpenAI | null = null;
 
@@ -53,38 +66,51 @@ export async function POST(request: NextRequest) {
     }
 
     // Ottieni i dati dalla richiesta
-    const { userInput } = await request.json();
+    const { userInput, conversationId } = await request.json();
     
     if (!userInput) {
       return NextResponse.json({ error: "Input utente mancante" }, { status: 400 });
     }
 
-    // Verifica il limite di richieste AI giornaliere
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const requestCount = await prisma.aIRequestLog.count({
-      where: {
-        userId: session.user.id,
-        createdAt: {
-          gte: today
-        }
+    // Check if this conversation ID has already been processed
+    let isAlreadyProcessed = false;
+    if (conversationId) {
+      isAlreadyProcessed = processedConversations.has(conversationId);
+      // Store this conversation ID for future checks
+      if (!isAlreadyProcessed) {
+        processedConversations.set(conversationId, Date.now());
       }
-    });
-    
-    // Ottieni i limiti del piano
-    const userPlan = (session.user.plan as string).toUpperCase();
-    const planLimits = getPlanLimits(userPlan);
-    
-    // Verifica se è stato superato il limite
-    if (requestCount >= planLimits.aiRequests) {
-      return NextResponse.json({
-        error: "Limite di richieste AI giornaliere raggiunto",
-        isLimitExceeded: true,
-        message: `Hai raggiunto il limite di ${planLimits.aiRequests} richieste AI giornaliere per il tuo piano.`,
-        currentCount: requestCount,
-        limit: planLimits.aiRequests
-      }, { status: 429 });
+    }
+
+    // Only verify AI request limits if this is not a previously processed conversation
+    if (!isAlreadyProcessed) {
+      // Verifica il limite di richieste AI giornaliere
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const requestCount = await prisma.aIRequestLog.count({
+        where: {
+          userId: session.user.id,
+          createdAt: {
+            gte: today
+          }
+        }
+      });
+      
+      // Ottieni i limiti del piano
+      const userPlan = (session.user.plan as string).toUpperCase();
+      const planLimits = getPlanLimits(userPlan);
+      
+      // Verifica se è stato superato il limite
+      if (requestCount >= planLimits.aiRequests) {
+        return NextResponse.json({
+          error: "Limite di richieste AI giornaliere raggiunto",
+          isLimitExceeded: true,
+          message: `Hai raggiunto il limite di ${planLimits.aiRequests} richieste AI giornaliere per il tuo piano.`,
+          currentCount: requestCount,
+          limit: planLimits.aiRequests
+        }, { status: 429 });
+      }
     }
 
     // Analizza il comando dell'utente
@@ -128,15 +154,18 @@ export async function POST(request: NextRequest) {
       temperature: 0.2,
     });
 
-    // Registra la richiesta AI
-    await prisma.aIRequestLog.create({
-      data: {
-        userId: session.user.id,
-        type: "command_analysis",
-        tokenCount: completion.usage?.total_tokens || 0,
-        successful: true
-      }
-    });
+    // Only log the request if it's not already processed
+    if (!isAlreadyProcessed) {
+      // Registra la richiesta AI
+      await prisma.aIRequestLog.create({
+        data: {
+          userId: session.user.id,
+          type: "command_analysis",
+          tokenCount: completion.usage?.total_tokens || 0,
+          successful: true
+        }
+      });
+    }
 
     const responseText = completion.choices[0].message.content || '{"type": "UNKNOWN", "params": {}, "originalText": "' + userInput + '"}';
     
@@ -155,6 +184,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Ottieni il conteggio aggiornato delle richieste
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     const updatedRequestCount = await prisma.aIRequestLog.count({
       where: {
         userId: session.user.id,
@@ -164,14 +196,20 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    // Get the plan limits again
+    const currentUserPlan = (session.user.plan as string).toUpperCase();
+    const currentPlanLimits = getPlanLimits(currentUserPlan);
+
     // Restituisci il comando analizzato e le statistiche di utilizzo
     return NextResponse.json({ 
       command: parsedCommand,
       requestStats: {
         currentCount: updatedRequestCount,
-        limit: planLimits.aiRequests,
-        remaining: Math.max(0, planLimits.aiRequests - updatedRequestCount)
-      }
+        limit: currentPlanLimits.aiRequests,
+        remaining: Math.max(0, currentPlanLimits.aiRequests - updatedRequestCount),
+        tokenCount: completion.usage?.total_tokens || 0
+      },
+      loggedAsFollowUp: isAlreadyProcessed
     });
   } catch (error: any) {
     console.error("Errore nell'analisi del comando:", error);

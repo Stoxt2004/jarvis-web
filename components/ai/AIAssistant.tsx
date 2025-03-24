@@ -10,12 +10,13 @@ import MultiFileAIAnalysis from './MultiFileAIAnalysis';
 import { usePanelIntegrationStore } from '@/lib/store/usePanelIntegrationStore';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSession } from 'next-auth/react';
-import { parseUserCommand, executeCommand, ParsedCommand } from '@/lib/services/aiClientService'; // Cambiato qui
+import { parseUserCommand, executeCommand, ParsedCommand, CommandType } from '@/lib/services/aiClientService';
 import { AIIntegrationService } from '@/lib/services/aiIntegrationService';
 import { useRouter } from 'next/navigation';
 import { useAILimits } from '@/components/premium/UsageLimitsNotifier';
 import { getPlanLimits } from '@/lib/stripe/config';
 import { aiEvents, AI_EVENTS } from '@/lib/events/aiEvents';
+import { PanelType, useWorkspaceStore } from '@/lib/store/workspaceStore';
 
 // Interface for LimitExceededOverlay component props
 interface LimitExceededOverlayProps {
@@ -207,6 +208,9 @@ const AIAssistant: React.FC = () => {
   const handleSendMessage = async () => {
     if (!input.trim()) return;
     
+    // Get the current plan limits
+    const planLimits = getPlanLimits(subscription.plan);
+    
     // Verify the limit again immediately before proceeding
     if (isLimitExceeded() || localAILimitExceeded) {
       setLocalAILimitExceeded(true);
@@ -232,7 +236,7 @@ const AIAssistant: React.FC = () => {
     setInput('');
     setIsTyping(true);
     
-    // Increment the local request counter
+    // Increment the local request counter - we'll only count this once for the entire conversation
     setLocalAIRequestCount(prev => prev + 1);
     
     try {
@@ -247,59 +251,154 @@ const AIAssistant: React.FC = () => {
         return;
       }
       
-      // Step 1: Analyze the user's command using aiClientService
+      // Now use the new unified chat endpoint with command support
       const userId = session?.user?.id || 'guest-user';
-      let parsedCommand: ParsedCommand;
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage }),
+      });
       
-      try {
-        parsedCommand = await parseUserCommand(userMessage, userId);
-        console.log("Analyzed command:", parsedCommand);
-      } catch (error) {
-        console.error("Error in command analysis:", error);
-        // If there's an error in the analysis, treat as a generic question
-        parsedCommand = {
-          type: "ANSWER_QUESTION",
-          params: { question: userMessage },
-          originalText: userMessage
-        };
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // If the limit has been reached
+        if (response.status === 429 && errorData.isLimitExceeded) {
+          setLocalAILimitExceeded(true);
+          sessionStorage.setItem('ai_limit_exceeded', 'true');
+          
+          // Emit the event again in case the limit is reached
+          aiEvents.emit(AI_EVENTS.LIMIT_REACHED);
+          // Create a storage change event to synchronize all instances
+          window.dispatchEvent(new Event('ai_limit_status_change'));
+          
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: errorData.message || "You have reached the daily AI request limit."
+          }]);
+          setIsTyping(false);
+          return;
+        }
+        
+        throw new Error(errorData.error || 'Error in the API response');
       }
       
-      // Step 2: Generate a response to the user based on the analyzed command
-      const aiResponse = await executeCommand(parsedCommand, userId);
+      const data = await response.json();
       
-      // Step 3: Execute system actions if necessary
-      if (parsedCommand.type !== "ANSWER_QUESTION" && parsedCommand.type !== "UNKNOWN") {
+      // Execute system actions if necessary based on the command type
+      if (data.command && data.command.type !== "ANSWER_QUESTION" && data.command.type !== "UNKNOWN") {
         try {
-          // If we're here, it's a system command (e.g., opening/closing apps, file management)
-          await AIIntegrationService.executeSystemAction(parsedCommand, userId);
+          // Handle specific action types that need UI updates
+          switch (data.command.type) {
+            case "OPEN_APP":
+              // Open a new application panel in the workspace
+              const appType = data.command.params.appType;
+              if (appType) {
+                console.log("Opening app:", appType);
+                
+                // Integration with workspace store to create a new panel
+                const appDefaults: Record<string, { position: { x: number, y: number }, size: { width: number, height: number } }> = {
+                  browser: {
+                    position: { x: 100, y: 100 },
+                    size: { width: 900, height: 600 }
+                  },
+                  editor: {
+                    position: { x: 150, y: 150 },
+                    size: { width: 800, height: 500 }
+                  },
+                  fileManager: {
+                    position: { x: 200, y: 100 },
+                    size: { width: 700, height: 500 }
+                  },
+                  terminal: {
+                    position: { x: 200, y: 200 },
+                    size: { width: 600, height: 400 }
+                  },
+                  notes: {
+                    position: { x: 250, y: 250 },
+                    size: { width: 500, height: 400 }
+                  },
+                  dashboard: {
+                    position: { x: 100, y: 100 },
+                    size: { width: 800, height: 500 }
+                  },
+                  calendar: {
+                    position: { x: 300, y: 300 },
+                    size: { width: 600, height: 400 }
+                  }
+                };
+                
+                const appTitles: Record<string, string> = {
+                  browser: 'Browser Web',
+                  editor: 'Editor',
+                  fileManager: 'File Manager',
+                  terminal: 'Terminale',
+                  notes: 'Note',
+                  dashboard: 'Dashboard',
+                  calendar: 'Calendario'
+                };
+                
+                const appContents: Record<string, any> = {
+                  browser: { url: 'https://www.google.com' },
+                  editor: { language: 'javascript', value: '// Inizia a scrivere il tuo codice qui\n\n' },
+                  notes: { text: '' }
+                };
+                
+                // Add the panel to the workspace
+                useWorkspaceStore.getState().addPanel({
+                  type: appType as PanelType,
+                  title: appTitles[appType] || `New ${appType}`,
+                  position: appDefaults[appType]?.position || { x: 100, y: 100 },
+                  size: appDefaults[appType]?.size || { width: 600, height: 400 },
+                  content: appContents[appType] || {}
+                });
+              }
+              break;
+              
+            case "CLOSE_APP":
+              // Close an application panel
+              const { appId, appType: closeAppType } = data.command.params;
+              const { panels, removePanel } = useWorkspaceStore.getState();
+              
+              if (appId) {
+                // Look for the panel with the specified ID
+                const panelToClose = panels.find(p => p.id === appId);
+                if (panelToClose) {
+                  removePanel(panelToClose.id);
+                }
+              } else if (closeAppType) {
+                // Look for panels of the specified type
+                const panelsToClose = panels.filter(p => p.type === closeAppType);
+                // Close the last panel of that type (if any)
+                if (panelsToClose.length > 0) {
+                  removePanel(panelsToClose[panelsToClose.length - 1].id);
+                }
+              }
+              break;
+              
+            // Handle other system commands that require UI updates
+            case "CREATE_FILE":
+              // If the file was created successfully, we might want to open it
+              if (data.command.params.openInEditor && data.command.params.fileName) {
+                // This would require additional logic to get the file ID from the server
+                // For now, just show a toast
+                toast.success(`File ${data.command.params.fileName} created`);
+              }
+              break;
+          }
         } catch (error) {
           console.error("Error executing system command:", error);
           // Continue anyway, the response has already been generated
         }
       }
-      
+  
       // Emit the request sent event to update statistics in real time
       aiEvents.emit(AI_EVENTS.REQUEST_SENT);
       
-      // Check again after the response if we have reached the limit
-      checkAndUpdateLimits();
-      
-      // Check if the response contains a message about exceeding the limit
-      if (aiResponse.toLowerCase().includes('reached the limit') || 
-          aiResponse.toLowerCase().includes('ai request limit') || 
-          aiResponse.toLowerCase().includes('daily limit')) {
-        console.log('AI request limit reached, disabling input');
-        setLocalAILimitExceeded(true);
-        sessionStorage.setItem('ai_limit_exceeded', 'true');
-        
-        // Emit the event again in case the limit is reached
-        aiEvents.emit(AI_EVENTS.LIMIT_REACHED);
-        // Create a storage change event to synchronize all instances
-        window.dispatchEvent(new Event('ai_limit_status_change'));
-      }
-      
       // Add the assistant's response
-      setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: data.response }]);
     } catch (error) {
       console.error('Error processing AI request:', error);
       // Fallback in case of error

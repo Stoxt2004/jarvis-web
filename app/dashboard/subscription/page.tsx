@@ -1,11 +1,11 @@
 // src/app/dashboard/subscription/page.tsx
 "use client"
 
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { toast } from 'sonner'
-import { FiArrowLeft, FiCreditCard, FiCheckCircle, FiAlertCircle } from 'react-icons/fi'
+import { FiArrowLeft, FiCreditCard, FiCheckCircle, FiAlertCircle, FiLoader } from 'react-icons/fi'
 import Link from 'next/link'
 import EnhancedPlanComparison from '@/components/subscription/EnhancedPlanComparision'
 import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
@@ -28,7 +28,7 @@ const handleManageSubscription = async () => {
 >
   Manage subscription
 </button>
-export default function SubscriptionPage() {
+function SubscriptionContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { status } = useSession()
@@ -70,13 +70,16 @@ export default function SubscriptionPage() {
   // Loading state
   if (status === 'loading') {
     return (
+      <Suspense fallback={<div>Loading form...</div>}>
       <div className="flex items-center justify-center h-screen" style={{ background: colors.background }}>
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2" style={{ borderColor: colors.primary }}></div>
       </div>
+      </Suspense>
     )
   }
 
   return (
+    <Suspense fallback={<div>Loading form...</div>}>
     <div className="min-h-screen" style={{ background: colors.background, color: colors.text }}>
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
@@ -176,5 +179,23 @@ export default function SubscriptionPage() {
         </div>
       </div>
     </div>
+    </Suspense>
   )
+}
+
+export default function SubscriptionPage() {
+  return (
+    <div className="min-h-full flex flex-col">
+      <Suspense fallback={
+        <div className="flex h-full items-center justify-center">
+          <div className="text-center">
+            <FiLoader className="w-10 h-10 mx-auto animate-spin text-primary" />
+            <p className="mt-4">Loading subscription page...</p>
+          </div>
+        </div>
+      }>
+        <SubscriptionContent />
+      </Suspense>
+    </div>
+  );
 }

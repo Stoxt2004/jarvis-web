@@ -408,7 +408,7 @@ export default function HomeClient() {
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   ></motion.div>
-                  Inizializzazione...
+                  Loading...
                 </span>
               ) : (
                 'Free Trial'

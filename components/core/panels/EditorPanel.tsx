@@ -97,7 +97,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     
     // Cerca se esiste già una tab per questo file
     const existingTabIndex = fileTabs.findIndex(tab => 
-      (fileId && tab.fileId === fileId) || 
+      (fileId && hasFileId(tab) && tab.fileId === fileId) || 
       (!fileId && tab.name === fileName)
     );
     
@@ -147,6 +147,10 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     }
   }, [activeFile.content]);
 
+  const hasFileId = (file: any): file is FileTab & { fileId: string } => {
+    return 'fileId' in file && file.fileId !== undefined;
+  };
+
   useEffect(() => {
     // Questo effetto viene eseguito quando panel.content cambia
     if (panel.content) {
@@ -156,9 +160,10 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       
       // Se c'è un fileName, verifica se è già aperto
       if (fileName) {
-        const existingTabIndex = fileTabs.findIndex(tab => 
-          (fileId && tab.fileId === fileId) || tab.name === fileName
-        );
+       const existingTabIndex = fileTabs.findIndex(tab => 
+    (fileId && hasFileId(tab) && tab.fileId === fileId) || 
+    (!fileId && tab.name === fileName)
+  );
         
         if (existingTabIndex >= 0) {
           // Se esiste già e c'è un timestamp, aggiorna sempre
@@ -568,16 +573,18 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       )
     );
   };
-
+  const getFileId = (file: FileTab): string | undefined => {
+    return 'fileId' in file ? file.fileId : undefined;
+  };
   // Funzione per salvare il contenuto dell'editor
   const handleSave = async () => {
     const activeFile = fileTabs.find(tab => tab.id === activeFileId);
-    if (!activeFile) return;
+  if (!activeFile) return;
     
     try {
       // Identifica l'ID del file da salvare
-      const fileId = activeFile.fileId || panel.content?.fileId;
-      console.log("Salvando il file con ID:", fileId);
+      const fileId = getFileId(activeFile) || panel.content?.fileId;
+    console.log("Salvando il file con ID:", fileId);
       
       if (!fileId) {
         console.warn("Nessun ID del file trovato per il salvataggio");
