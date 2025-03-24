@@ -1,5 +1,5 @@
-// components/ai/AIAssistant.tsx
-// Complete version with limit synchronization and command functionality
+// src/components/ai/AIAssistant.tsx
+// Aggiornato per usare aiClientService invece di openaiService direttamente
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +10,7 @@ import MultiFileAIAnalysis from './MultiFileAIAnalysis';
 import { usePanelIntegrationStore } from '@/lib/store/usePanelIntegrationStore';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useSession } from 'next-auth/react';
-import { answerQuestion, parseUserCommand, executeCommand, ParsedCommand } from '@/lib/services/openaiService';
+import { parseUserCommand, executeCommand, ParsedCommand } from '@/lib/services/aiClientService'; // Cambiato qui
 import { AIIntegrationService } from '@/lib/services/aiIntegrationService';
 import { useRouter } from 'next/navigation';
 import { useAILimits } from '@/components/premium/UsageLimitsNotifier';
@@ -147,10 +147,10 @@ const AIAssistant: React.FC = () => {
       // Show a toast to inform the user
       toast.error(
         <div className="flex flex-col">
-  <strong>Daily AI request limit reached</strong>
-  <span className="text-sm">You have used all your {planLimits.aiRequests} AI requests for today.</span>
-</div>,
-{ duration: 6000 }
+          <strong>Daily AI request limit reached</strong>
+          <span className="text-sm">You have used all your {planLimits.aiRequests} AI requests for today.</span>
+        </div>,
+        { duration: 6000 }
       );
       
       return true; // Limit reached
@@ -203,7 +203,7 @@ const AIAssistant: React.FC = () => {
     inputRef.current?.focus();
   }, []);
   
-  // Handle message sending - NOW WITH EVENT SYSTEM AND COMMANDS
+  // Handle message sending - UPDATED to use aiClientService
   const handleSendMessage = async () => {
     if (!input.trim()) return;
     
@@ -247,7 +247,7 @@ const AIAssistant: React.FC = () => {
         return;
       }
       
-      // Step 1: Analyze the user's command
+      // Step 1: Analyze the user's command using aiClientService
       const userId = session?.user?.id || 'guest-user';
       let parsedCommand: ParsedCommand;
       
@@ -301,7 +301,7 @@ const AIAssistant: React.FC = () => {
       // Add the assistant's response
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (error) {
-      console.error('Error in OpenAI call:', error);
+      console.error('Error processing AI request:', error);
       // Fallback in case of error
       setMessages(prev => [...prev, { 
         role: 'assistant', 

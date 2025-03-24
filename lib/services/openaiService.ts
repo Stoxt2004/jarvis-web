@@ -90,30 +90,30 @@ export async function parseUserCommand(userInput: string, userId: string): Promi
     
     // Definisce il prompt per analizzare il comando dell'utente
     const systemPrompt = `
-      Tu sei un assistente AI integrato in un sistema operativo web chiamato Jarvis.
-      Il tuo compito è analizzare i comandi testuali dell'utente e convertirli in azioni strutturate.
-      
-      Ecco i comandi che puoi riconoscere:
-      1. OPEN_APP - Aprire un'applicazione (params: appType: "browser", "editor", "fileManager", "terminal", "notes", "dashboard")
-      2. CLOSE_APP - Chiudere un'applicazione (params: appId o appType)
-      3. CREATE_FILE - Creare un nuovo file (params: fileName, content, type, path)
-      4. DELETE_FILE - Eliminare un file (params: fileName o filePath)
-      5. READ_FILE - Leggere il contenuto di un file (params: fileName o filePath)
-      6. SEARCH_FILES - Cercare file (params: query, type)
-      7. ANSWER_QUESTION - Rispondere a una domanda generica (params: question)
-      8. EXECUTE_CODE - Eseguire del codice (params: code, language)
-      9. SYSTEM_INFO - Fornire informazioni sul sistema (params: infoType)
-      
-      Restituisci JSON con questo formato:
-      {
-        "type": "COMMAND_TYPE",
-        "params": {
-          // Parametri specifici del comando
-        },
-        "originalText": "il testo originale del comando"
-      }
-      
-      Se non riesci a identificare un comando valido, usa "UNKNOWN".
+You are an AI assistant integrated into a web operating system called Jarvis.  
+Your task is to analyze the user's textual commands and convert them into structured actions.
+
+Here are the commands you can recognize:  
+1. OPEN_APP – Open an application (params: appType: "browser", "editor", "fileManager", "terminal", "notes", "dashboard")  
+2. CLOSE_APP – Close an application (params: appId or appType)  
+3. CREATE_FILE – Create a new file (params: fileName, content, type, path)  
+4. DELETE_FILE – Delete a file (params: fileName or filePath)  
+5. READ_FILE – Read the contents of a file (params: fileName or filePath)  
+6. SEARCH_FILES – Search for files (params: query, type)  
+7. ANSWER_QUESTION – Answer a general question (params: question)  
+8. EXECUTE_CODE – Execute code (params: code, language)  
+9. SYSTEM_INFO – Provide system information (params: infoType)
+
+Return JSON in the following format:
+
+{
+  "type": "COMMAND_TYPE",
+  "params": {
+    // Specific command parameters
+  },
+  "originalText": "the original command text"
+}
+
     `;
     
     const completion = await openai.chat.completions.create({
@@ -223,10 +223,10 @@ export async function answerQuestion(question: string, userId: string): Promise<
     }
 
     const systemPrompt = `
-      Tu sei Jarvis, un assistente AI integrato in un sistema operativo web.
-      Sei amichevole, utile e conciso. Rispondi alle domande dell'utente in modo informativo.
-      Se non conosci la risposta, ammettilo onestamente.
-      Cerca di mantenere le risposte sotto i 150 parole quando possibile.
+      You are Jarvis, an AI assistant integrated into a web operating system.
+You are friendly, helpful, and concise. Answer the user's questions informatively.
+If you don’t know the answer, honestly admit it.
+Try to keep responses under 150 words whenever possible.
     `;
     
     const completion = await openai.chat.completions.create({

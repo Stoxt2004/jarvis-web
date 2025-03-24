@@ -144,7 +144,7 @@ export default function Dashboard() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.3 }}
         >
-          Inizializzazione sistemi...
+          System starting...
         </motion.p>
       </div>
     )
