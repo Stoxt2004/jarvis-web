@@ -376,7 +376,7 @@ export default function RegisterPage() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 ></motion.div>
-                Registrazione in corso...
+                Signing Up...
               </span>
             ) : (
               "Sign Up"

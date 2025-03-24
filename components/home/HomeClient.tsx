@@ -706,17 +706,26 @@ export default function HomeClient() {
           </motion.div>
           
           <div className="flex flex-wrap justify-center items-center gap-4 md:gap-8">
-            {['Privacy Policy', 'Terms of Service', 'Contact Us', 'FAQ'].map((item, i) => (
+            
               <motion.div
-                key={i}
+                
                 whileHover={{ scale: 1.1, color: colors.primary }}
                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
               >
-                <Link href="#" className="text-white/70 hover:text-white transition-colors">
-                  {item}
+                <Link href="/privacy-policy" className="text-white/70 hover:text-white transition-colors">
+                 <p>Privacy Policy</p>
                 </Link>
               </motion.div>
-            ))}
+              <motion.div
+                
+                whileHover={{ scale: 1.1, color: colors.primary }}
+                transition={{ type: "spring", stiffness: 400, damping: 10 }}
+              >
+                <Link href="/terms-of-service" className="text-white/70 hover:text-white transition-colors">
+                 <p>Terms of Service</p>
+                </Link>
+              </motion.div>
+            
           </div>
         </div>
         

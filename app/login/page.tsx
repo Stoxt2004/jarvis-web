@@ -259,7 +259,7 @@ export default function LoginPage() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 ></motion.div>
-                Accesso in corso...
+                Logging In...
               </span>
             ) : (
               "Sign In"

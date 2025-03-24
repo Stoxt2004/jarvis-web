@@ -62,7 +62,7 @@ export function useAIIntegration() {
           // Apre l'applicazione specificata
           const appType = parsedCommand.params.appType as PanelType;
           if (!appType) {
-            toast.error("Tipo di applicazione non specificato");
+            toast.error("Application type not specified");
             return;
           }
           
@@ -137,7 +137,7 @@ export function useAIIntegration() {
             if (panelToClose) {
               removePanel(panelToClose.id);
             } else {
-              toast.error(`Nessun pannello trovato con ID: ${appId}`);
+              toast.error(`No panel found with ID: ${appId}`);
             }
           } else if (closeAppType) {
             // Cerca i pannelli del tipo specificato
