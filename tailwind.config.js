@@ -1,6 +1,5 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: 'class',
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
@@ -8,39 +7,39 @@ module.exports = {
     './src/**/*.{js,ts,jsx,tsx,mdx}',
     './lib/**/*.{js,ts,jsx,tsx,mdx}'
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Palette scura
         primary: {
-          DEFAULT: '#3b82f6', // Blu più vivace
+          DEFAULT: '#3b82f6',
           dark: '#2563eb',
           light: '#60a5fa',
         },
         secondary: {
-          DEFAULT: '#10b981', // Verde futuristico
+          DEFAULT: '#10b981',
           dark: '#059669',
           light: '#34d399',
         },
         background: {
-          DEFAULT: '#0f172a', // Sfondo scuro
+          DEFAULT: '#0f172a',
           light: '#1e293b',
           dark: '#0f172a',
         },
         surface: {
-          DEFAULT: '#1e293b', // Superficie scura
+          DEFAULT: '#1e293b',
           light: '#334155',
           dark: '#0f172a',
         },
         accent: {
-          DEFAULT: '#f59e0b', // Arancione/dorato
+          DEFAULT: '#f59e0b',
           dark: '#d97706',
           light: '#fbbf24',
         },
-        danger: '#ef4444', // Rosso
-        success: '#22c55e', // Verde
-        info: '#3b82f6', // Blu
-        warning: '#f97316', // Arancione
+        danger: '#ef4444',
+        success: '#22c55e',
+        info: '#3b82f6',
+        warning: '#f97316',
         dark: {
           background: {
             DEFAULT: '#0f172a',
