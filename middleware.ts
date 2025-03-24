@@ -3,7 +3,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({ req: request });
+  // Add console logging for debugging
+  console.log(`Middleware called for path: ${request.nextUrl.pathname}`);
+  
+  const token = await getToken({ 
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET 
+  });
+  
+  // Log authentication status
+  console.log(`Authentication status: ${!!token ? 'Authenticated' : 'Not authenticated'}`);
+  
   const isAuthenticated = !!token;
   
   // Percorsi pubblici che non richiedono autenticazione
@@ -15,8 +25,11 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(path + "/")
   );
   
+  console.log(`Is public path: ${isPublicPath}`);
+  
   // Se l'utente non è autenticato e sta cercando di accedere a una pagina protetta
   if (!isAuthenticated && !isPublicPath) {
+    console.log(`Redirecting unauthenticated user to login from: ${request.nextUrl.pathname}`);
     // Reindirizza alla pagina di login con redirect_url
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("redirect", request.nextUrl.pathname);
@@ -25,11 +38,13 @@ export async function middleware(request: NextRequest) {
   
   // Se l'utente è autenticato e sta cercando di accedere alla pagina di login o registrazione
   if (isAuthenticated && (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/register")) {
+    console.log(`Redirecting authenticated user to dashboard from: ${request.nextUrl.pathname}`);
     // Reindirizza alla dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
   
   // In tutti gli altri casi, procedi normalmente
+  console.log(`Proceeding normally for: ${request.nextUrl.pathname}`);
   return NextResponse.next();
 }
 

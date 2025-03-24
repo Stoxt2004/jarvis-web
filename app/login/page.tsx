@@ -4,7 +4,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { FiMail, FiLock, FiGithub, FiAlertCircle, FiLoader } from "react-icons/fi";
 import { FcGoogle } from "react-icons/fc";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Separated login form component that uses useSearchParams
 function LoginForm() {
   const router = useRouter();
+  const { status } = useSession();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams?.get("redirect") || "/dashboard";
   const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +21,14 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Check if already authenticated
+  useEffect(() => {
+    if (status === 'authenticated') {
+      console.log('Already authenticated, redirecting to dashboard');
+      router.push('/dashboard');
+    }
+  }, [status, router]);
   
   // Colori moderni 2025 (stessi di HomeClient)
   const colors = {
@@ -53,22 +62,33 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
+      console.log(`Logging in with email: ${email} and redirecting to: ${redirectUrl}`);
+      
       const result = await signIn("credentials", {
         redirect: false,
         email,
         password,
+        callbackUrl: redirectUrl
       });
 
+      console.log("SignIn result:", result);
+
       if (result?.error) {
-        setError("Credenziali non valide. Riprova.");
+        setError("Invalid credentials. Please try again.");
         toast.error("Login failed");
       } else {
         toast.success("Login successful");
-        router.push(redirectUrl);
-        router.refresh();
+        
+        // Manual redirect after short delay
+        setTimeout(() => {
+          console.log(`Redirecting to: ${redirectUrl}`);
+          router.push(redirectUrl);
+          router.refresh();
+        }, 500);
       }
     } catch (error) {
-      setError("Si è verificato un errore durante l'accesso.");
+      console.error("Login error:", error);
+      setError("An error occurred during login.");
       toast.error("Authentication error");
     } finally {
       setIsLoading(false);
@@ -77,8 +97,44 @@ function LoginForm() {
 
   const handleOAuthSignIn = (provider: string) => {
     setIsLoading(true);
+    console.log(`OAuth login with ${provider}, redirecting to: ${redirectUrl}`);
     signIn(provider, { callbackUrl: redirectUrl });
   };
+
+  // Loading state
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" 
+        style={{ background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.surface} 100%)` }}>
+        <div className="text-center">
+          <motion.div 
+            className="w-16 h-16 border-4 border-t-primary border-white/20 rounded-full mx-auto mb-4"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          ></motion.div>
+          <p className="text-white">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If already authenticated, don't show the login form
+  if (status === 'authenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center" 
+        style={{ background: `linear-gradient(135deg, ${colors.background} 0%, ${colors.surface} 100%)` }}>
+        <div className="text-center">
+          <p className="text-white mb-4">You're already logged in!</p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-4 py-2 rounded bg-primary text-white"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 relative" 

@@ -10,14 +10,16 @@ export const authOptions: NextAuthOptions = {
   adapter: CustomPrismaAdapter(),
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 giorni
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/login",
     signOut: "/logout",
     error: "/login",
     newUser: "/register",
   },
+  debug: process.env.NODE_ENV === 'development',
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -27,6 +29,7 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log("Missing credentials");
           return null;
         }
 
@@ -35,6 +38,7 @@ export const authOptions: NextAuthOptions = {
         });
 
         if (!user || !user.password) {
+          console.log("User not found or no password");
           return null;
         }
 
@@ -44,9 +48,11 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
+          console.log("Invalid password");
           return null;
         }
 
+        console.log("User authenticated successfully:", user.id);
         return {
           id: user.id,
           name: user.name,
@@ -68,14 +74,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, account }) {
-      // Aggiungi dati personalizzati al token JWT
+      // Add custom data to JWT token
       if (user) {
         token.id = user.id;
         token.role = (user as any).role;
         token.plan = (user as any).plan;
       }
       
-      // Se l'utente ha fatto login tramite OAuth, aggiorna il token
+      // If user logged in via OAuth, update token
       if (account) {
         token.provider = account.provider;
       }
@@ -83,7 +89,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Passa i dati dal token alla sessione
+      // Pass data from token to session
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
@@ -92,5 +98,19 @@ export const authOptions: NextAuthOptions = {
       
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // Customize redirect behavior
+      console.log(`NextAuth redirect: ${url}, baseUrl: ${baseUrl}`);
+      
+      // If URL starts with base URL or is relative URL, allow it
+      if (url.startsWith(baseUrl) || url.startsWith('/')) {
+        console.log(`Allowing redirect to: ${url}`);
+        return url;
+      }
+      
+      // Otherwise, redirect to base URL
+      console.log(`Redirecting to baseUrl: ${baseUrl}`);
+      return baseUrl;
+    }
   },
 };
