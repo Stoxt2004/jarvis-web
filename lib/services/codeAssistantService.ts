@@ -192,7 +192,7 @@ export async function analyzeCode(code: string, language: string): Promise<strin
     `;
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: `\`\`\`${language}\n${code}\n\`\`\`` }
@@ -248,7 +248,7 @@ export async function getCodeCompletion(
     `;
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
         { 

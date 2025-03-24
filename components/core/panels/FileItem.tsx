@@ -113,7 +113,7 @@ export default function FileItem({
       startDrag(file.id, file.name, file.type, file.content, panelId);
     } catch (error) {
       console.error("Errore nell'impostazione dei dati drag:", error);
-      toast.error("Errore nell'iniziare il trascinamento");
+      toast.error("Error starting the drag");
     }
     
     setIsDragging(true);
@@ -197,21 +197,21 @@ export default function FileItem({
       
       // Non permettere di spostare una cartella dentro sé stessa o un file nella sua stessa posizione
       if (draggedFile.fileId === file.id) {
-        toast.error("Non puoi spostare un elemento dentro sé stesso");
+        toast.error("You can't move an element into itself");
         return;
       }
 
       // NUOVO: Verifica aggiuntiva per file nulli
       if (!draggedFile.fileId || !file.id) {
         console.error('ID file mancante:', { draggedFileId: draggedFile.fileId, targetFolderId: file.id });
-        toast.error("Impossibile completare l'operazione: dati file mancanti");
+        toast.error("Operation could not be completed: missing file data.");
         return;
       }
       
       console.log(`Spostamento del file ${draggedFile.fileName} (${draggedFile.fileId}) nella cartella ${file.name} (${file.id})`);
       
       // NUOVO: Feedback immediato
-      toast.loading(`Spostamento di ${draggedFile.fileName} in corso...`);
+      toast.loading(`Moving ${draggedFile.fileName}...`);
       
       // Esegui lo spostamento del file
       const result = await moveFile(draggedFile.fileId, file.id);
@@ -222,7 +222,7 @@ export default function FileItem({
         addModifiedFileId(draggedFile.fileId);
         markDataAsChanged();
         
-        toast.success(`${draggedFile.fileName} spostato in ${file.name}`);
+        toast.success(`${draggedFile.fileName} moved in ${file.name}`);
         
         // Notifica il padre per aggiornare la lista dei file
         if (onFileDropped) {
@@ -230,11 +230,11 @@ export default function FileItem({
           onFileDropped(draggedFile.fileId, file.id);
         }
       } else {
-        toast.error(`Impossibile spostare ${draggedFile.fileName}`);
+        toast.error(`Impossible move ${draggedFile.fileName}`);
       }
     } catch (error) {
       console.error('Errore nello spostamento del file:', error);
-      toast.error('Errore nello spostamento del file');
+      toast.error('Error moving the file.');
     }
   };
   

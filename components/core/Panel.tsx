@@ -220,7 +220,7 @@ export default function Panel({ panel }: PanelProps) {
     
     if (isSelectedForAI) {
       removePanelFromAISelection(panel.id);
-      toast.success('Pannello rimosso dall\'analisi multi-file');
+      toast.success('Panel removed from multi-file analysis');
     } else {
       // Verifica se l'utente ha raggiunto il limite di file free
       if (selectedPanelsForAI.length >= 2 && !subscription.isPremium) {
@@ -229,7 +229,7 @@ export default function Panel({ panel }: PanelProps) {
       }
       
       addPanelToAISelection(panel.id);
-      toast.success('Pannello aggiunto all\'analisi multi-file');
+      toast.success('Panel added to multi-file analysis');
     }
   }, [
     hasAccess, 

@@ -91,6 +91,10 @@ export function useAIIntegration() {
             dashboard: {
               position: { x: 100, y: 100 },
               size: { width: 800, height: 500 }
+            },
+            calendar: {
+              position: { x: 300, y: 300 },
+              size: { width: 600, height: 400 }
             }
           };
           
@@ -101,7 +105,8 @@ export function useAIIntegration() {
             fileManager: 'File Manager',
             terminal: 'Terminale',
             notes: 'Note',
-            dashboard: 'Dashboard'
+            dashboard: 'Dashboard',
+            calendar: 'Calendario'
           };
           
           // Contenuto predefinito per le app

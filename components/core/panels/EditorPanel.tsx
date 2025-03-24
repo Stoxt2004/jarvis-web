@@ -54,7 +54,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       id: 'file-' + nanoid(), // Usa nanoid invece di Date.now()
       name: 'untitled.js',
       language: 'javascript',
-      content: '// Scrivi il tuo codice qui\n',
+      content: '// Write your code here\n',
       isDirty: false
     }];
   });
@@ -219,13 +219,13 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       if (activeFile.language === 'javascript' || activeFile.language === 'typescript') {
         // Esegui in un contesto isolato
         const result = new Function(activeFile.content)();
-        toast.success('Codice eseguito con successo');
-      } else {
-        toast.info(`Esecuzione del codice ${activeFile.language} non supportata nell'editor`);
+        toast.success('Code executed successfully');
+            } else {
+              toast.info(`Execution of ${activeFile.language} code not supported in the editor`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Errore nell'esecuzione: ${errorMessage}`);
+      toast.error(`Execution error: ${errorMessage}`);
     }
   };
 
@@ -240,15 +240,15 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast.success(`File ${activeFile.name} scaricato`);
+      toast.success(`File ${activeFile.name} downloaded`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Errore nel download: ${errorMessage}`);
+      toast.error(`Download error: ${errorMessage}`);
     }
   };
 
   const handleNewFile = () => {
-    const fileName = prompt('Nome del nuovo file:');
+    const fileName = prompt('New file name:');
     if (!fileName) return;
     
     // Determina l'estensione e il linguaggio
@@ -292,7 +292,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       [newFile.id]: { past: [], future: [] }
     }));
     
-    toast.success(`Nuovo file ${fileName} creato`);
+    toast.success(`New file ${fileName} created`);
   };
 
   const handleFileUpload = () => {
@@ -349,7 +349,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
           [newFile.id]: { past: [], future: [] }
         }));
         
-        toast.success(`File ${file.name} caricato`);
+        toast.success(`File ${file.name} uploaded`);
       };
       
       reader.readAsText(file);
@@ -387,10 +387,10 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
         )
       );
       
-      toast.success('Codice formattato');
+      toast.success('Code formatted');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Errore nella formattazione: ${errorMessage}`);
+      toast.error(`Error formatting: ${errorMessage}`);
     }
   };
 
@@ -402,7 +402,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     
     // Controlla se il file è l'unico rimasto
     if (fileTabs.length === 1) {
-      toast.info('Non puoi chiudere l\'unico file aperto');
+      toast.info('You cannot close the only open file');
       return;
     }
     
@@ -430,12 +430,12 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       return newHistory;
     });
     
-    toast.success(`File chiuso`);
+    toast.success(`File closed`);
   };
 
   const handleSearch = () => {
     if (!searchText.trim()) {
-      toast.info('Inserisci un testo da cercare');
+      toast.info('Enter text to search');
       return;
     }
     
@@ -444,13 +444,13 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     const matches = content.match(searchRegex);
     
     if (!matches) {
-      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      toast.info(`No matches found for "${searchText}"`);
       return;
     }
     
     // Qui potresti implementare la selezione del testo trovato
     // o lo scroll alla posizione corretta
-    toast.success(`Trovate ${matches.length} corrispondenze per "${searchText}"`);
+    toast.success(`Found ${matches.length} matches for "${searchText}"`);
     
     // Esempio: seleziona la prima occorrenza
     const firstIndex = content.toLowerCase().indexOf(searchText.toLowerCase());
@@ -462,7 +462,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
 
   const handleReplace = () => {
     if (!searchText.trim()) {
-      toast.info('Inserisci un testo da cercare');
+      toast.info('Enter text to search');
       return;
     }
     
@@ -470,7 +470,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     const firstIndex = content.toLowerCase().indexOf(searchText.toLowerCase());
     
     if (firstIndex < 0) {
-      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      toast.info(`No matches found for "${searchText}"`);
       return;
     }
     
@@ -500,7 +500,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       )
     );
     
-    toast.success(`Sostituita la prima occorrenza di "${searchText}" con "${replaceText}"`);
+    toast.success(`First occurrence of "${searchText}" replaced with "${replaceText}"`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -517,7 +517,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
 
   const handleReplaceAll = () => {
     if (!searchText.trim()) {
-      toast.info('Inserisci un testo da cercare');
+      toast.info('Enter text to search');
       return;
     }
     
@@ -526,7 +526,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     const newContent = content.replace(searchRegex, replaceText);
     
     if (newContent === content) {
-      toast.info(`Nessuna corrispondenza trovata per "${searchText}"`);
+      toast.info(`No matches found for "${searchText}"`);
       return;
     }
     
@@ -554,7 +554,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     const matches = content.match(searchRegex);
     const count = matches ? matches.length : 0;
     
-    toast.success(`Sostituite ${count} occorrenze di "${searchText}" con "${replaceText}"`);
+    toast.success(`Occurrences of ${searchText} replaced with "${replaceText}"`);
   };
 
   // Funzione per gestire il cambiamento del contenuto dell'editor
@@ -619,10 +619,10 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
         )
       );
       
-      toast.success('File salvato con successo');
+      toast.success('File saved successfully');
     } catch (error) {
       console.error('Errore durante il salvataggio:', error);
-      toast.error('Errore durante il salvataggio del file');
+      toast.error('Error while saving the file');
     }
   };
 
@@ -665,7 +665,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       
       toast.success(response);
     } catch (error: any) {
-      toast.error(`Errore nell'aggiornamento del file: ${error.message}`);
+      toast.error(`Error updating the file: ${error.message}`);
     }
   };
 
@@ -680,7 +680,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
       // Assumiamo che la risposta contenga il contenuto del file
       return response;
     } catch (error: any) {
-      toast.error(`Errore nel caricamento del file: ${error.message}`);
+      toast.error(`Error loading the file: ${error.message}`);
       return null;
     }
   };
@@ -702,7 +702,7 @@ export default function EditorPanel({ panel }: EditorPanelProps) {
     const projectType = prompt('Che tipo di progetto vuoi creare? (es. "To-do app con React", "Blog con Next.js", ecc.)');
     if (!projectType) return;
     
-    toast.info(`Generazione di un progetto "${projectType}" in corso...`);
+    toast.info(`Generation of a project "${projectType}" ...`);
     
     // Qui simuliamo la generazione di file multipli
     setTimeout(() => {
@@ -922,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div className="flex items-center p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
           <input
             type="text"
-            placeholder="Cerca nel file..."
+            placeholder="Search in file..."
             className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded mr-2 flex-1"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
@@ -932,20 +932,20 @@ document.addEventListener('DOMContentLoaded', () => {
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
             onClick={handleSearch}
           >
-            Trova
+            Find
           </button>
           <button 
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 mr-2"
             onClick={() => setShowReplace(!showReplace)}
-            title="Mostra/nascondi opzioni di sostituzione"
+            title="Show/hide replacement options"
           >
-            {showReplace ? 'Nascondi sostituzione' : 'Sostituisci'}
+            {showReplace ? 'Hide replacement' : 'Replace'}
           </button>
           {showReplace && (
             <>
               <input
                 type="text"
-                placeholder="Sostituisci con..."
+                placeholder="Replace with..."
                 className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded mr-2 flex-1"
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
@@ -978,7 +978,7 @@ document.addEventListener('DOMContentLoaded', () => {
       {showSettings && (
         <div className="absolute right-0 top-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg rounded-lg p-4 z-10 w-80">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-medium">Impostazioni Editor</h3>
+            <h3 className="font-medium">Settings</h3>
             <button 
               className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               onClick={() => setShowSettings(false)}
@@ -989,7 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
           
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label>Dimensione testo</label>
+              <label>Text size</label>
               <div className="flex items-center">
                 <input 
                   type="range" 
@@ -1004,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <label>Dimensione tab</label>
+              <label>Tab size</label>
               <select 
                 value={tabSize} 
                 onChange={(e) => setTabSize(parseInt(e.target.value))}
@@ -1016,18 +1016,10 @@ document.addEventListener('DOMContentLoaded', () => {
               </select>
             </div>
             
-            <div className="flex items-center justify-between">
-              <label>Tema scuro</label>
-              <input 
-                type="checkbox" 
-                checked={darkTheme} 
-                onChange={() => setDarkTheme(!darkTheme)}
-                className="h-5 w-5"
-              />
-            </div>
+            
             
             <div className="flex items-center justify-between">
-              <label>Salvataggio automatico</label>
+              <label>Auto Save</label>
               <input 
                 type="checkbox" 
                 checked={autoSave} 
@@ -1037,7 +1029,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             
             <div className="flex items-center justify-between">
-              <label>Numeri di riga</label>
+              <label>Row numbers</label>
               <input 
                 type="checkbox" 
                 checked={showLineNumbers} 
@@ -1096,10 +1088,10 @@ document.addEventListener('DOMContentLoaded', () => {
         <div className="flex items-center space-x-4">
           <span>{activeFile.language.toUpperCase()}</span>
           <span>
-            Riga: {activeFile.content.substring(0, editorRef.current?.selectionStart || 0).split('\n').length}
+            Row: {activeFile.content.substring(0, editorRef.current?.selectionStart || 0).split('\n').length}
           </span>
           <span>
-            Colonna: {
+            Column: {
               editorRef.current?.selectionStart !== undefined
                 ? (activeFile.content.substring(0, editorRef.current.selectionStart).split('\n').pop() || '').length
                 : 0
@@ -1107,8 +1099,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
         </div>
         <div className="flex items-center space-x-4">
-          <span>{activeFile.content.split('\n').length} righe</span>
-          <span>{activeFile.isDirty ? 'Non salvato' : 'Salvato'}</span>
+          <span>{activeFile.content.split('\n').length} rows</span>
+          <span>{activeFile.isDirty ? 'Not Saved' : 'Saved'}</span>
         </div>
       </div>
     </div>

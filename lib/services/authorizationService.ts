@@ -12,7 +12,9 @@ const PREMIUM_FEATURES = {
   'unlimitedPanels': ['PREMIUM', 'TEAM']
 };
 
-export function hasAccessToFeature(userPlan: string, feature: string): boolean {
+type PremiumFeature = keyof typeof PREMIUM_FEATURES;
+
+export function hasAccessToFeature(userPlan: string, feature: PremiumFeature): boolean {
   if (!PREMIUM_FEATURES[feature]) return true; // Se non è una funzione premium, tutti hanno accesso
   
   return PREMIUM_FEATURES[feature].includes(userPlan);

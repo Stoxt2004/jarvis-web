@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth/auth-options";
 import { FileStorageService } from "@/lib/services/fileStorage";
+import { aiRateLimiterMiddleware } from "@/lib/middleware/aiRateLimiterMiddleware";
+import { prisma } from "@/lib/auth/prisma-adapter";
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,6 +12,12 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+    }
+
+    // Verifica il limite di richieste AI
+    const limiterResponse = await aiRateLimiterMiddleware(request);
+    if (limiterResponse) {
+      return limiterResponse; // Se il middleware ritorna una risposta, significa che l'utente ha superato il limite
     }
 
     // Ottieni i dati dalla richiesta
@@ -129,6 +137,16 @@ export async function POST(request: NextRequest) {
       default:
         return NextResponse.json({ error: `Comando '${command}' non supportato` }, { status: 400 });
     }
+
+    // Registra la richiesta AI nel database (sarà conteggiata per il limite giornaliero)
+    await prisma.aIRequestLog.create({
+      data: {
+        userId: session.user.id,
+        type: 'command',
+        tokenCount: 0, // Non abbiamo un conteggio token esatto per questo tipo di richiesta
+        successful: true
+      }
+    });
 
     return NextResponse.json(result);
   } catch (error: any) {

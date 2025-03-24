@@ -187,3 +187,32 @@ button, a, input, select, textarea {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* Modifica da apportare al CSS in globals.css */
+/* Cerca regole per i bordi o aggiungi questa nuova regola che rimuove i bordi indesiderati */
+
+/* Rimuove tutti i bordi residui nell'area principale della dashboard */
+.main-content-area {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Rimuove specificamente i bordi blu nella parte inferiore dello schermo */
+.flex-1.flex {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Assicura che nessun elemento abbia un bordo blu non voluto */
+[class*="border-blue"],
+[class*="border-primary"] {
+  border-color: transparent !important;
+}
+
+/* Verifica che il contenitore principale della workspace non abbia bordi indesiderati */
+.workspace-container,
+.relative.h-full,
+.flex-1.relative.h-\[calc\(100vh-64px\)\] {
+  border: none !important;
+  outline: none !important;
+}

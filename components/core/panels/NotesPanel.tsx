@@ -144,8 +144,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
           setAvailableTags(tags);
         } catch (error) {
           console.error("Errore nel recupero delle note:", error);
-          toast.error("Impossibile caricare le note");
-        } finally {
+          toast.error("You must be logged in to delete notes");
           setIsLoading(false);
         }
       }
@@ -178,7 +177,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
   // Gestisce la creazione di una nuova nota
   const handleCreateNote = () => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per creare note");
+      toast.error("Unable to load notes");
       return;
     }
     
@@ -190,7 +189,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
   // Gestisce il salvataggio di una nota
   const handleSaveNote = async (note: Note) => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per salvare note");
+      toast.error("You must be logged in to save notes");
       return;
     }
     
@@ -220,7 +219,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
   // Gestisce l'eliminazione di una nota
   const handleDeleteNote = async (noteId: string) => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per eliminare note");
+      toast.error("You must be logged in to save notes");
       return;
     }
     
@@ -266,7 +265,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
     return (
       <div style={styles.container}>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div>Caricamento note...</div>
+          <div>Loading notes...</div>
         </div>
       </div>
     );

@@ -19,12 +19,11 @@ export async function GET(request: NextRequest) {
         userId: session.user.id,
         type: { not: 'folder' } // Escludiamo le cartelle dal calcolo
       },
-      select: { size: true, name: true } // Aggiungi name per il debug
+      select: { size: true }
     });
     
     // Calcola la dimensione totale in bytes
     const totalSizeInBytes = files.reduce((total, file) => total + (file.size || 0), 0);
-    console.log('Dimensione totale in bytes:', totalSizeInBytes);
     // Converti in GB
     const storageUsedGB = totalSizeInBytes / (1024 * 1024 * 1024);
     
@@ -46,22 +45,42 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    console.log('Files trovati:', files.length);
-    console.log('Files con dimensione:', files.filter(f => f.size && f.size > 0).length);
-    // Ottieni i limiti del piano
-    const userPlan = session.user.plan as 'FREE' | 'PREMIUM' | 'TEAM';
-    const planLimits = getPlanLimits(userPlan);
+    // Ottieni i limiti del piano - FIX: assicurati che il piano sia in maiuscolo
+    let userPlan = session.user.plan as string || 'FREE';
     
+    // Assicurati che userPlan sia in maiuscolo per evitare problemi di case sensitivity
+    userPlan = userPlan.toUpperCase();
+    
+    // Aggiunta debugging per verificare che il piano sia corretto
+    console.log(`Piano dell'utente (session): ${session.user.plan}`);
+    console.log(`Piano dell'utente (normalizzato): ${userPlan}`);
+    
+    // Verifica che userPlan sia uno dei piani validi
+    if (!['FREE', 'PREMIUM', 'TEAM'].includes(userPlan)) {
+      console.warn(`Piano non valido: ${userPlan}, usando FREE come fallback`);
+      userPlan = 'FREE';
+    }
+    
+    const planLimits = getPlanLimits(userPlan as 'FREE' | 'PREMIUM' | 'TEAM');
+    
+    // Aggiungi i limiti ottenuti al log per debugging
+    console.log('Limiti del piano:', planLimits);
     
     return NextResponse.json({
+      // Valori correnti di utilizzo
       storage: parseFloat(storageUsedGB.toFixed(2)),
       aiRequests: aiRequestsCount,
       workspaces: workspaces,
       
+      // Limiti del piano
       storageLimit: planLimits.storage,
       aiRequestsLimit: planLimits.aiRequests,
       workspacesLimit: planLimits.workspaces,
       
+      // Piano corrente (per debugging)
+      currentPlan: userPlan,
+      
+      // Percentuali di utilizzo
       storagePercentage: Math.min(100, (storageUsedGB / planLimits.storage) * 100),
       aiRequestsPercentage: Math.min(100, (aiRequestsCount / planLimits.aiRequests) * 100),
       workspacesPercentage: planLimits.workspaces > 0 

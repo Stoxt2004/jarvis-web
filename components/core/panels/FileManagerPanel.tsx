@@ -319,12 +319,14 @@ const getFileIcon = (item: FileItem) => {
       case 'jpeg':
       case 'gif':
         // Mostra un messaggio (in una vera implementazione si aprirebbe un visualizzatore)
-        toast.info(`Visualizzazione di ${file.name} (funzionalità simulata)`);
+        toast.info(`Viewing ${file.name} (simulated functionality)`);
+
         break;
         
       case 'pdf':
         // Simula l'apertura di un PDF
-        toast.info(`Apertura di ${file.name} nel visualizzatore PDF (funzionalità simulata)`);
+        toast.info(`Opening ${file.name} in PDF viewer (simulated functionality)`);
+
         break;
         
       case 'doc':
@@ -334,11 +336,13 @@ const getFileIcon = (item: FileItem) => {
       case 'ppt':
       case 'pptx':
         // Simula l'apertura dei documenti Office
-        toast.info(`Apertura di ${file.name} (funzionalità simulata)`);
+        toast.info(`Opening ${file.name} (simulated functionality)`);
+
         break;
         
       default:
-        toast.info(`Tipo di file non supportato: ${extension}`);
+        toast.info(`Unsupported file type: ${extension}`);
+
     }
   };
   
@@ -471,7 +475,8 @@ const getFileIcon = (item: FileItem) => {
       }
     } catch (error) {
       console.error('Errore nella creazione della cartella:', error);
-      toast.error(`Errore nella creazione della cartella: ${error}`);
+      toast.error(`Error creating folder: ${error}`);
+
     }
   };
   
@@ -517,7 +522,8 @@ const getFileIcon = (item: FileItem) => {
       }
     } catch (error) {
       console.error('Errore nella creazione del file:', error);
-      toast.error(`Errore nella creazione del file: ${error}`);
+      toast.error(`Error creating folder: ${error}`);
+
     }
     
     setShowContextMenu(false);
@@ -536,7 +542,8 @@ const getFileIcon = (item: FileItem) => {
     fileInput.onchange = async (e: Event) => {
       const input = e.target as HTMLInputElement;
       if (input.files && input.files.length > 0) {
-        toast.info(`Upload di ${input.files.length} file in corso...`);
+        toast.info(`Uploading ${input.files.length} files...`);
+
         
         // Processa ogni file
         for (let i = 0; i < input.files.length; i++) {
@@ -547,7 +554,8 @@ const getFileIcon = (item: FileItem) => {
             await uploadFile(file, currentFolderId || undefined);
           } catch (error) {
             console.error(`Errore nell'upload di ${file.name}:`, error);
-            toast.error(`Errore nell'upload di ${file.name}`);
+            toast.error(`Error uploading ${file.name}`);
+
           }
         }
         
@@ -567,7 +575,7 @@ const getFileIcon = (item: FileItem) => {
   // Download di file
   const handleDownload = async () => {
     if (selectedItems.length === 0) {
-      toast.error('Seleziona almeno un elemento da scaricare');
+      toast.error('Select at least one item to download');
       return;
     }
     
@@ -577,7 +585,7 @@ const getFileIcon = (item: FileItem) => {
       if (!item) continue;
       
       if (item.type === 'folder') {
-        toast.info(`Download della cartella "${item.name}" non supportato`);
+        toast.info(`Downloading folder "${item.name}" not supported`);
         continue;
       }
       
@@ -585,7 +593,7 @@ const getFileIcon = (item: FileItem) => {
         await downloadFile(item.id);
       } catch (error) {
         console.error(`Errore nel download di ${item.name}:`, error);
-        toast.error(`Errore nel download di ${item.name}`);
+        toast.error(`Error downloading ${item.name}`);
       }
     }
     
@@ -595,7 +603,7 @@ const getFileIcon = (item: FileItem) => {
   // Elimina file o cartelle
   const handleDelete = async () => {
     if (selectedItems.length === 0) {
-      toast.error('Seleziona almeno un elemento da eliminare');
+      toast.error('Select at least one item to delete');
       return;
     }
     
@@ -611,7 +619,7 @@ const getFileIcon = (item: FileItem) => {
         await deleteFile(id);
       } catch (error) {
         console.error(`Errore nell'eliminazione:`, error);
-        toast.error(`Errore nell'eliminazione`);
+        toast.error(`Error deleting`);
       }
     }
     
@@ -625,7 +633,7 @@ const getFileIcon = (item: FileItem) => {
   const handleRename = (id?: string) => {
     const itemId = id || (selectedItems.length === 1 ? selectedItems[0] : null);
     if (!itemId) {
-      toast.error('Seleziona un elemento da rinominare');
+      toast.error('Select an item to rename');
       return;
     }
     
@@ -664,7 +672,7 @@ const getFileIcon = (item: FileItem) => {
       loadFiles();
     } catch (error) {
       console.error('Errore durante la rinominazione:', error);
-      toast.error(`Errore durante la rinominazione: ${error}`);
+      toast.error(`Error renaming: ${error}`);
     }
     
     setIsRenaming(false);
@@ -675,7 +683,7 @@ const getFileIcon = (item: FileItem) => {
   const toggleFavorite = async (id?: string) => {
     const itemId = id || (selectedItems.length === 1 ? selectedItems[0] : null);
     if (!itemId) {
-      toast.error('Seleziona un elemento');
+      toast.error('Select an item to manage tags');
       return;
     }
     
@@ -683,7 +691,7 @@ const getFileIcon = (item: FileItem) => {
     if (!item) return;
     
     // In un'implementazione reale, qui si aggiornerebbe il flag starred nel database
-    toast.success(`${item.name} ${item.isPublic ? 'rimosso dai' : 'aggiunto ai'} preferiti`);
+    toast.success(`${item.name} ${item.isPublic ? 'removed from' : 'added to'} favorites`);
     
     // Aggiorna la visualizzazione locale
     setItems(prev => prev.map(i => 
@@ -697,7 +705,7 @@ const getFileIcon = (item: FileItem) => {
   const handleTagsMenu = (id?: string) => {
     const itemId = id || (selectedItems.length === 1 ? selectedItems[0] : null);
     if (!itemId) {
-      toast.error('Seleziona un elemento per gestire i tag');
+      toast.error('Select an item to manage tags');
       return;
     }
     
@@ -708,13 +716,13 @@ const getFileIcon = (item: FileItem) => {
   
   // Aggiunge un tag (simulato)
   const addTag = (tag: string) => {
-    toast.success(`Tag "${tag}" aggiunto`);
+    toast.success(`Tag "${tag}" added`);
     setShowTagsMenu(false);
   };
   
   // Rimuove un tag (simulato)
   const removeTag = (tag: string) => {
-    toast.success(`Tag "${tag}" rimosso`);
+    toast.success(`Tag "${tag}" removed`);
   };
   
   // Aggiunge un nuovo tag (simulato)
@@ -734,14 +742,14 @@ const getFileIcon = (item: FileItem) => {
   // Gestisce copia/taglia
   const handleCopy = (cut: boolean = false) => {
     if (selectedItems.length === 0) {
-      toast.error('Seleziona almeno un elemento da copiare');
+      toast.error('Select at least one item to copy');
       return;
     }
     
     const itemsToCopy = items.filter(item => selectedItems.includes(item.id));
     setClipboard({ items: itemsToCopy, operation: cut ? 'cut' : 'copy' });
     
-    toast.success(`${selectedItems.length} elementi ${cut ? 'tagliati' : 'copiati'} negli appunti`);
+    toast.success(`${selectedItems.length} items ${cut ? 'cut' : 'copied'} to clipboard`);
     setShowContextMenu(false);
   };
 
@@ -775,18 +783,18 @@ const getFileIcon = (item: FileItem) => {
       setItems(files);
     } catch (error) {
       console.error("Errore nel caricamento dei file:", error);
-      toast.error("Si è verificato un errore durante il caricamento dei file");
+      toast.error("An error occurred while loading files");
     }
   };
   
   // Incolla gli elementi dagli appunti (simulato)
   const handlePaste = async () => {
     if (!clipboard || clipboard.items.length === 0) {
-      toast.error('Nessun elemento negli appunti');
+      toast.error('No items in clipboard');
       return;
     }
     
-    toast.success(`Incollati ${clipboard.items.length} elementi`);
+    toast.success(`Pasted ${clipboard.items.length} items`);
     
     // In un'implementazione reale, qui copieresti/sposteresti effettivamente i file
     // Per ora, ricarica semplicemente i file per simulare l'operazione
@@ -846,7 +854,7 @@ const getFileIcon = (item: FileItem) => {
           <input
             type="text"
             className="w-full bg-surface rounded-lg px-3 py-1.5 pl-9 outline-none border border-white/10 focus:border-primary"
-            placeholder="Cerca file e cartelle..."
+            placeholder="Search files and folders..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -888,7 +896,7 @@ const getFileIcon = (item: FileItem) => {
           title="Crea nuova cartella"
         >
           <FiPlus size={16} />
-          <span>Nuova cartella</span>
+          <span>New Folder</span>
           </button>
         
         <button 
@@ -897,7 +905,7 @@ const getFileIcon = (item: FileItem) => {
           title="Crea nuovo file"
         >
           <FiFile size={16} />
-          <span>Nuovo file</span>
+          <span>New File</span>
         </button>
         
         <button 
@@ -911,8 +919,7 @@ const getFileIcon = (item: FileItem) => {
           title="Elimina"
         >
           <FiTrash2 size={16} />
-          <span>Elimina</span>
-        </button>
+Delete        </button>
         
         <button 
           className={`px-3 py-1.5 rounded flex items-center gap-1.5 ${
@@ -982,7 +989,7 @@ const getFileIcon = (item: FileItem) => {
                       setSortOrder('asc');
                     }
                   }}>
-                    Nome {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="text-left py-2 px-4 font-medium cursor-pointer" onClick={() => {
                     if (sortBy === 'date') {
@@ -992,7 +999,7 @@ const getFileIcon = (item: FileItem) => {
                       setSortOrder('desc');
                     }
                   }}>
-                    Modificato {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    Modified {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="text-left py-2 px-4 font-medium cursor-pointer" onClick={() => {
                     if (sortBy === 'size') {
@@ -1002,7 +1009,7 @@ const getFileIcon = (item: FileItem) => {
                       setSortOrder('desc');
                     }
                   }}>
-                    Dimensione {sortBy === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    Size {sortBy === 'size' && (sortOrder === 'asc' ? '↑' : '↓')}
                   </th>
                   <th className="w-10"></th>
                 </tr>
@@ -1131,7 +1138,7 @@ const getFileIcon = (item: FileItem) => {
                   }}
                 >
                   <FiPlay size={14} />
-                  <span>{items.find(item => item.id === contextMenuItem)?.type === 'folder' ? 'Apri cartella' : 'Apri file'}</span>
+                  <span>{items.find(item => item.id === contextMenuItem)?.type === 'folder' ? 'Open Folder' : 'Open File'}</span>
                 </button>
                 
                 <button 
@@ -1139,7 +1146,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => handleRename(contextMenuItem)}
                 >
                   <FiEdit2 size={14} />
-                  <span>Rinomina</span>
+                  <span>Rename</span>
                 </button>
                 
                 <button 
@@ -1147,7 +1154,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => handleCopy()}
                 >
                   <FiCopy size={14} />
-                  <span>Copia</span>
+                  <span>Copy</span>
                 </button>
                 
                 <button 
@@ -1155,7 +1162,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => handleCopy(true)}
                 >
                   <FiClipboard size={14} />
-                  <span>Taglia</span>
+                  <span>Cut</span>
                 </button>
                 
                 <button 
@@ -1163,7 +1170,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => toggleFavorite(contextMenuItem)}
                 >
                   <FiStar size={14} fill={items.find(item => item.id === contextMenuItem)?.isPublic ? "currentColor" : "none"} />
-                  <span>{items.find(item => item.id === contextMenuItem)?.isPublic ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}</span>
+                  <span>{items.find(item => item.id === contextMenuItem)?.isPublic ? 'Remove from favorites' : 'Add to favorites'}</span>
                 </button>
                 
                 <button 
@@ -1171,7 +1178,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => handleTagsMenu(contextMenuItem)}
                 >
                   <FiSearch size={14} />
-                  <span>Gestisci tag</span>
+                  <span>Handle tags</span>
                 </button>
                 
                 {items.find(item => item.id === contextMenuItem)?.type !== 'folder' && (
@@ -1191,7 +1198,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={() => handleDelete()}
                 >
                   <FiTrash2 size={14} />
-                  <span>Elimina</span>
+                  <span>Delete</span>
                 </button>
               </div>
             ) : (
@@ -1202,7 +1209,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={handleCreateFolder}
                 >
                   <FiFolder size={14} />
-                  <span>Nuova cartella</span>
+                  <span>New folder</span>
                 </button>
                 
                 <button 
@@ -1210,7 +1217,7 @@ const getFileIcon = (item: FileItem) => {
                   onClick={handleCreateFile}
                 >
                   <FiFile size={14} />
-                  <span>Nuovo file</span>
+                  <span>New file</span>
                 </button>
                 
                 <button 
@@ -1242,7 +1249,7 @@ const getFileIcon = (item: FileItem) => {
                   }}
                 >
                   <FiSearch size={14} />
-                  <span>Ordina per nome</span>
+                  <span>Order by name</span>
                 </button>
                 
                 <button 
@@ -1254,7 +1261,7 @@ const getFileIcon = (item: FileItem) => {
                   }}
                 >
                   <FiSearch size={14} />
-                  <span>Ordina per data</span>
+                  <span>Order by size</span>
                 </button>
                 
                 <button 
@@ -1265,7 +1272,7 @@ const getFileIcon = (item: FileItem) => {
                   }}
                 >
                   <FiGrid size={14} />
-                  <span>Cambia vista</span>
+                  <span>Change view</span>
                 </button>
               </div>
             )}
@@ -1338,10 +1345,10 @@ const getFileIcon = (item: FileItem) => {
       {/* Status bar */}
       <div className="px-4 py-2 border-t border-white/10 flex items-center justify-between text-sm text-white/50">
         <div>
-          {filteredItems.length} elementi
+          {filteredItems.length} elements
         </div>
         <div>
-          {selectedItems.length > 0 && `${selectedItems.length} selezionati`}
+          {selectedItems.length > 0 && `${selectedItems.length} selected`}
         </div>
       </div>
     </div>

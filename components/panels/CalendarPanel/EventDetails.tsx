@@ -112,39 +112,39 @@ const EventDetails: React.FC<EventDetailsProps> = ({ event, onEdit, onDelete, on
         <div style={styles.eventInfo}>
           <div style={styles.eventDateTime}>
             <div>
-              <strong>Inizio:</strong> {formatDate(event.start)} alle {formatTime(event.start)}
+              <strong>Start:</strong> {formatDate(event.start)} alle {formatTime(event.start)}
             </div>
             <div>
-              <strong>Fine:</strong> {formatDate(event.end)} alle {formatTime(event.end)}
+              <strong>End:</strong> {formatDate(event.end)} alle {formatTime(event.end)}
             </div>
           </div>
           
           {event.location && (
             <div style={styles.eventLocation}>
-              <strong>Luogo:</strong> {event.location}
+              <strong>Place:</strong> {event.location}
             </div>
           )}
           
           {event.description && (
             <div style={styles.eventDescription}>
-              <strong>Descrizione:</strong>
+              <strong>Description:</strong>
               <p>{event.description}</p>
             </div>
           )}
           
           {event.reminder && (
             <div style={styles.eventReminder}>
-              <strong>Promemoria:</strong> {event.reminderTime} minuti prima
+              <strong>Reminder:</strong> {event.reminderTime} minuti prima
             </div>
           )}
         </div>
         
         <div style={styles.eventActions}>
           <button onClick={onEdit} style={styles.btnEdit}>
-            Modifica
+            Edit
           </button>
           <button onClick={onDelete} style={styles.btnDelete}>
-            Elimina
+            Delete
           </button>
         </div>
       </div>

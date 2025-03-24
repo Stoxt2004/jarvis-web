@@ -1,4 +1,4 @@
-// src/lib/stripe/config.ts - Versione corretta con apiVersion aggiornata
+// src/lib/stripe/config.ts - Versione corretta con gestione case-insensitive 
 import Stripe from 'stripe';
 
 // Configura Stripe
@@ -32,12 +32,12 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       'Accesso all\'assistente AI con funzioni base',
       'Editor di codice di base',
-      '5GB di spazio cloud',
+      '1GB di spazio cloud',
       '1 workspace alla volta',
       'Supporto community'
     ],
     limitations: {
-      storage: 5, // GB
+      storage: 1, // GB
       workspaces: 1,
       aiRequests: 50, // al giorno
       advancedFeatures: false,
@@ -51,13 +51,13 @@ export const PLANS: Record<string, PlanConfig> = {
     features: [
       'Assistente AI avanzato',
       'IDE completo + terminale',
-      '50GB di spazio cloud',
+      '10GB di spazio cloud',
       'Workspace illimitati',
       'API personalizzate',
       'Supporto prioritario'
     ],
     limitations: {
-      storage: 50, // GB
+      storage: 10, // GB
       workspaces: -1, // illimitati
       aiRequests: 500, // al giorno
       advancedFeatures: true,
@@ -70,14 +70,14 @@ export const PLANS: Record<string, PlanConfig> = {
     monthlyPrice: 24.99,
     features: [
       'Tutte le funzionalità Premium',
-      '100GB di spazio cloud',
+      '25GB di spazio cloud',
       'Collaborazione in tempo reale',
       'Controlli admin avanzati',
       'Onboarding personalizzato',
       'Supporto 24/7'
     ],
     limitations: {
-      storage: 100, // GB
+      storage: 25, // GB
       workspaces: -1, // illimitati
       aiRequests: 2000, // al giorno
       advancedFeatures: true,
@@ -105,7 +105,16 @@ export function isFeatureAvailable(plan: PlanType, feature: string): boolean {
   }
 }
 
-// Ottieni i limiti per un piano
-export function getPlanLimits(plan: PlanType) {
-  return PLANS[plan]?.limitations || PLANS.FREE.limitations;
+// Ottieni i limiti per un piano - MODIFICATO per gestire case-insensitive
+export function getPlanLimits(plan: string): PlanConfig["limitations"] {
+  // Normalizza il piano a uppercase
+  const normalizedPlan = plan.toUpperCase();
+  
+  // Verifica se il piano esiste
+  if (PLANS[normalizedPlan]) {
+    return PLANS[normalizedPlan].limitations;
+  }
+  
+  // Se il piano non esiste, restituisci i limiti del piano FREE
+  return PLANS.FREE.limitations;
 }

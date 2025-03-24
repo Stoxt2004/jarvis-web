@@ -11,22 +11,22 @@ import EnhancedPlanComparison from '@/components/subscription/EnhancedPlanCompar
 import UsageLimitsNotifier from '@/components/premium/UsageLimitsNotifier'
 import { redirectToCustomerPortal } from '@/lib/stripe/client';
 import { useSubscription } from '@/hooks/useSubscription'; 
-// All'interno del tuo componente
+// Inside your component
 const handleManageSubscription = async () => {
   try {
     await redirectToCustomerPortal();
   } catch (error) {
-    console.error('Errore durante il reindirizzamento al portale clienti:', error);
-    toast.error('Si è verificato un errore. Riprova più tardi.');
+    console.error('Error during redirection to customer portal:', error);
+    toast.error('An error occurred. Please try again later.');
   }
 };
 
-// Nel JSX
+// In JSX
 <button 
   className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg"
   onClick={handleManageSubscription}
 >
-  Gestisci abbonamento
+  Manage subscription
 </button>
 export default function SubscriptionPage() {
   const router = useRouter()
@@ -34,7 +34,7 @@ export default function SubscriptionPage() {
   const { status } = useSession()
   const { subscription } = useSubscription();
 
-  // Colori moderni 2025 (stessi di HomeClient)
+  // Modern 2025 colors (same as HomeClient)
   const colors = {
     primary: "#A47864", // Mocha Mousse (Pantone 2025)
     secondary: "#A78BFA", // Digital Lavender
@@ -54,16 +54,16 @@ export default function SubscriptionPage() {
     }
   }, [status, router])
 
-  // Mostra toast di successo/errore basati sui parametri URL
+  // Show success/error toast based on URL parameters
   useEffect(() => {
     if (searchParams?.get('success') === 'true') {
-      toast.success('Abbonamento attivato con successo!')
+      toast.success('Subscription successfully activated!')
     }
     if (searchParams?.get('canceled') === 'true') {
-      toast.info('Il processo di abbonamento è stato annullato')
+      toast.info('The subscription process has been canceled')
     }
     if (searchParams?.get('error')) {
-      toast.error(`Si è verificato un errore: ${searchParams.get('error')}`)
+      toast.error(`An error occurred: ${searchParams.get('error')}`)
     }
   }, [searchParams])
 
@@ -79,13 +79,13 @@ export default function SubscriptionPage() {
   return (
     <div className="min-h-screen" style={{ background: colors.background, color: colors.text }}>
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Intestazione */}
+        {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
               <FiArrowLeft className="w-5 h-5" style={{ color: colors.textMuted }} />
             </Link>
-            <h1 className="text-2xl font-bold">Abbonamento</h1>
+            <h1 className="text-2xl font-bold">Subscription</h1>
           </div>
           
           <Link
@@ -95,81 +95,81 @@ export default function SubscriptionPage() {
             style={{ background: 'rgba(255, 255, 255, 0.1)' }}
           >
             <FiCreditCard className="w-4 h-4" />
-            <span>Gestione fatturazione</span>
+            <span>Billing management</span>
           </Link>
         </div>
         
-        {/* Notifica limiti di utilizzo */}
+        {/* Usage limits notification */}
         <div className="mb-8 rounded-xl p-4" style={{ background: 'rgba(255, 255, 255, 0.05)' }}>
           <UsageLimitsNotifier />
         </div>
         
-        {/* Status abbonamento */}
+        {/* Subscription status */}
         <div className="mb-8 rounded-xl p-6" 
           style={{ 
             background: `linear-gradient(to right, ${colors.navy}, ${colors.primary})` 
           }}>
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold mb-2">Il tuo piano attuale</h2>
+              <h2 className="text-xl font-bold mb-2">Your current plan</h2>
               <div className="flex items-center space-x-2">
                 <FiCheckCircle className="text-green-400" />
                 <span className="font-semibold text-lg">
-                  {/* Usa dinamicamente il tipo di abbonamento */}
-                  Piano {subscription.plan === 'PREMIUM' ? 'Premium' : 
-                        subscription.plan === 'TEAM' ? 'Team' : 'Free'}
+                  {/* Dynamically use subscription type */}
+                  {subscription.plan === 'PREMIUM' ? 'Premium' : 
+                        subscription.plan === 'TEAM' ? 'Team' : 'Free'} Plan
                 </span>
               </div>
               <p className="mt-2 text-sm" style={{ color: colors.textMuted }}>
-                {/* Testo condizionale in base al piano */}
+                {/* Conditional text based on plan */}
                 {subscription.isActive && (subscription.plan === 'PREMIUM' || subscription.plan === 'TEAM') ?
-                  `Stai utilizzando il piano ${subscription.plan.toLowerCase()} con tutte le funzionalità.` :
-                  'Stai utilizzando il piano gratuito con funzionalità limitate.'}
+                  `You are using the ${subscription.plan.toLowerCase()} plan with all features.` :
+                  'You are using the free plan with limited features.'}
               </p>
             </div>
             
-            {/* Mostra il pulsante solo se non è un piano premium attivo */}
+            {/* Show button only if not an active premium plan */}
             {(!subscription.isActive || subscription.plan === 'FREE') && (
               <button
                 className="mt-4 md:mt-0 px-6 py-3 rounded-lg font-medium"
                 style={{ background: colors.accent }}
                 onClick={() => router.push('#pricing')}
               >
-                Passa a Premium
+                Upgrade to Premium
               </button>
             )}
           </div>
         </div>
         
-        {/* Confronto piani */}
+        {/* Plan comparison */}
         <div className="rounded-xl p-6" style={{ background: colors.surface }}>
-          <h2 className="text-xl font-semibold mb-6">Confronto piani</h2>
+          <h2 className="text-xl font-semibold mb-6">Plan Comparison</h2>
           <EnhancedPlanComparison />
         </div>
         
         {/* FAQ */}
         <div className="mt-8 rounded-xl p-6" style={{ background: colors.surface }}>
-          <h2 className="text-xl font-semibold mb-6">Domande frequenti</h2>
+          <h2 className="text-xl font-semibold mb-6">Frequently Asked Questions</h2>
           
           <div className="space-y-4">
             <div>
-              <h3 className="font-medium mb-2">Come posso passare a un piano superiore?</h3>
+              <h3 className="font-medium mb-2">How can I upgrade to a higher plan?</h3>
               <p style={{ color: colors.textMuted }}>
-                Puoi effettuare l'upgrade in qualsiasi momento cliccando sul pulsante "Passa a Premium" e seguendo le istruzioni di pagamento.
+                You can upgrade at any time by clicking the "Upgrade to Premium" button and following the payment instructions.
               </p>
             </div>
             
             <div>
-              <h3 className="font-medium mb-2">Posso annullare il mio abbonamento?</h3>
+              <h3 className="font-medium mb-2">Can I cancel my subscription?</h3>
               <p style={{ color: colors.textMuted }}>
-                Sì, puoi annullare il tuo abbonamento in qualsiasi momento dalla sezione Fatturazione. L'abbonamento rimarrà attivo fino alla fine del periodo di fatturazione.
+                Yes, you can cancel your subscription at any time from the Billing section. The subscription will remain active until the end of the billing period.
               </p>
             </div>
             
             <div>
-              <h3 className="font-medium mb-2">Quali metodi di pagamento accettate?</h3>
+              <h3 className="font-medium mb-2">What payment methods do you accept?</h3>
               <p style={{ color: colors.textMuted }}>
-                Accettiamo tutte le principali carte di credito (Visa, Mastercard, American Express) e PayPal.
+                We accept all major credit cards (Visa, Mastercard, American Express) and PayPal.
               </p>
             </div>
           </div>

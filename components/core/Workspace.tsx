@@ -47,7 +47,7 @@ export default function Workspace() {
   // Crea un nuovo pannello
   const handleCreatePanel = (type: PanelType) => {
     if (subscription.plan === 'FREE' && panels.length >= 3) {
-      toast.error('Piano Free limitato a 3 pannelli. Passa a Premium per pannelli illimitati.');
+      toast.error('Free plan limited to 3 panels. Upgrade to Premium for unlimited panels.');
       return;
     }
     const panelDefaults = {
@@ -104,7 +104,7 @@ export default function Workspace() {
   
 
   return (
-    <div className="relative h-full">
+    <div className="relative h-full overflow-auto">
       {/* Pannelli esistenti */}
       <AnimatePresence>
         {panels.map((panel) => (
@@ -114,18 +114,19 @@ export default function Workspace() {
 
       {/* Dock per creare nuove app */}
       <motion.div 
-        className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 rounded-full"
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 rounded-full"
         style={{ 
           background: `rgba(26, 26, 46, 0.8)`,
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
+          zIndex: 40 // Assicura che sia sopra altri elementi
         }}
         initial={{ y: 100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.7 }}
       >
-        {(['editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
+        {(['dashboard', 'editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
           <motion.button
             key={type}
             className="p-3 rounded-full"

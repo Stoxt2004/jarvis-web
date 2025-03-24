@@ -72,10 +72,10 @@ export default function ProfilePage() {
         },
       })
       
-      toast.success('Profilo aggiornato con successo')
+      toast.success('Profile successfully updated')
       setIsEditing(false)
     } catch (error) {
-      toast.error('Si è verificato un errore durante l\'aggiornamento del profilo')
+      toast.error('An error occurred while updating the profile')
       console.error(error)
     } finally {
       setIsLoading(false)
@@ -99,7 +99,7 @@ export default function ProfilePage() {
             <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
               <FiArrowLeft className="w-5 h-5" style={{ color: colors.textMuted }} />
             </Link>
-            <h1 className="text-2xl font-bold">Il tuo profilo</h1>
+            <h1 className="text-2xl font-bold">Your profile</h1>
           </div>
           
           <div className="flex space-x-2">
@@ -110,7 +110,7 @@ export default function ProfilePage() {
                 style={{ background: colors.primary }}
               >
                 <FiEdit2 className="w-4 h-4" />
-                <span>Modifica</span>
+                <span>Edit</span>
               </button>
             ) : (
               <button
@@ -186,7 +186,7 @@ export default function ProfilePage() {
         <div className="rounded-xl p-6" style={{ background: colors.surface }}>
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-1" style={{ color: colors.textMuted }}>Nome completo</label>
+              <label className="block text-sm font-medium mb-1" style={{ color: colors.textMuted }}>Full name</label>
               {isEditing ? (
                 <input
                   type="text"

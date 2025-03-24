@@ -60,15 +60,15 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError("Credenziali non valide. Riprova.");
-        toast.error("Accesso fallito");
+        toast.error("Login failed");
       } else {
-        toast.success("Accesso effettuato con successo");
+        toast.success("Login successful");
         router.push(redirectUrl);
         router.refresh();
       }
     } catch (error) {
       setError("Si è verificato un errore durante l'accesso.");
-      toast.error("Errore di autenticazione");
+      toast.error("Authentication error");
     } finally {
       setIsLoading(false);
     }
@@ -149,7 +149,7 @@ export default function LoginPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          Accedi al tuo account
+          Access your account
         </motion.h1>
         
         <AnimatePresence>
@@ -187,7 +187,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="nome@esempio.com"
+                placeholder="name@example.com"
                 whileFocus={{ 
                   boxShadow: `0 0 0 2px ${colors.primary}30`,
                   borderColor: colors.primary
@@ -210,7 +210,7 @@ export default function LoginPage() {
                   className="text-sm hover:underline"
                   style={{ color: colors.secondary }}
                 >
-                  Password dimenticata?
+                  Forgot password?
                 </Link>
               </motion.div>
             </div>
@@ -262,7 +262,7 @@ export default function LoginPage() {
                 Accesso in corso...
               </span>
             ) : (
-              "Accedi"
+              "Sign In"
             )}
           </motion.button>
         </form>
@@ -274,7 +274,7 @@ export default function LoginPage() {
               color: colors.textMuted,
               backgroundColor: 'rgba(26, 26, 46, 0.5)'
             }}>
-              oppure continua con
+              or continue with
             </span>
           </div>
           
@@ -312,7 +312,7 @@ export default function LoginPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          Non hai un account?{" "}
+          Don't have an account?{" "}
           <motion.span
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -322,7 +322,7 @@ export default function LoginPage() {
               className="font-medium hover:underline"
               style={{ color: colors.secondary }}
             >
-              Registrati
+              Sign up
             </Link>
           </motion.span>
         </motion.p>

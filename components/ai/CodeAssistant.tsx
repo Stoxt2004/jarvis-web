@@ -84,7 +84,7 @@ export default function CodeAssistant({
       
       setConversation(prev => [...prev, { role: 'assistant', content: aiResponse }]);
     } catch (error: any) {
-      toast.error(`Errore: ${error.message || 'Si è verificato un errore'}`);
+      toast.error(`Error: ${error.message || 'An error occurred'}`);
     } finally {
       setIsProcessing(false);
       setPrompt('');
@@ -104,9 +104,9 @@ export default function CodeAssistant({
     
     if (codeMatch && codeMatch[1]) {
       onCodeGenerated(codeMatch[1].trim());
-      toast.success('Codice applicato all\'editor');
+      toast.success('Code applied to the editor');
     } else {
-      toast.error('Nessun codice trovato nel messaggio');
+      toast.error('No code found in the message');
     }
   };
 
@@ -117,19 +117,18 @@ export default function CodeAssistant({
     if (codeMatch && codeMatch[1]) {
       navigator.clipboard.writeText(codeMatch[1].trim());
       setCopiedToClipboard(true);
-      toast.success('Codice copiato negli appunti');
+      toast.success('Code copied to clipboard');
       setTimeout(() => setCopiedToClipboard(false), 2000);
     } else {
-      toast.error('Nessun codice trovato nel messaggio');
+      toast.error('No code found in the message');
     }
   };
 
   return (
     <div className="flex flex-col h-full border-l border-gray-200 dark:border-gray-700 w-80">
       <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h3 className="font-medium">Assistente Codice (OpenAI)</h3>
+        <h3 className="font-medium">Code Assistant</h3>
         <div className="flex items-center space-x-2">
-          <span className="text-xs text-green-500">API: .env</span>
         </div>
       </div>
       
@@ -141,7 +140,7 @@ export default function CodeAssistant({
               : 'bg-gray-100 dark:bg-gray-800'
           }`}>
             <div className="text-xs font-bold mb-1">
-              {message.role === 'user' ? 'Tu' : 'Assistente'}
+              {message.role === 'user' ? 'You' : 'Assistant'}
             </div>
             <div className="whitespace-pre-wrap">{message.content}</div>
             
@@ -179,7 +178,7 @@ export default function CodeAssistant({
         <div className="flex items-center space-x-2">
           <textarea
             ref={promptInputRef}
-            placeholder="Chiedi all'assistente di codice..."
+            placeholder="Ask code to Jarvis..."
             className="flex-1 p-2 border rounded resize-none max-h-32"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -196,7 +195,7 @@ export default function CodeAssistant({
           </button>
         </div>
         <div className="text-xs text-gray-500 mt-1">
-          Premi Enter per inviare, Shift+Enter per andare a capo
+        Press Enter to send, Shift+Enter to start a new line
         </div>
       </div>
     </div>

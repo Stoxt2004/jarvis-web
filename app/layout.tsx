@@ -18,7 +18,7 @@ const robotoMono = Roboto_Mono({
 
 export const metadata: Metadata = {
   title: 'Jarvis Web OS',
-  description: 'Un Web Operating System futuristico in stile Jarvis',
+  description: 'A futuristic Web Operating System in Jarvis style',
 }
 
 export const viewport: Viewport = {
@@ -31,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="it" className="dark" suppressHydrationWarning>
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.variable} ${robotoMono.variable} font-sans bg-background text-foreground antialiased`}>
         <Providers>
           <Toaster position="top-center" richColors />

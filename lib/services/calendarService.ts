@@ -80,7 +80,7 @@ export const saveEvent = async (event: CalendarEvent): Promise<CalendarEvent> =>
     
     const savedEvent = await response.json();
     
-    toast.success(event.id ? 'Evento aggiornato con successo' : 'Evento creato con successo');
+toast.success(event.id ? 'Event updated successfully' : 'Event created successfully');
     
     return {
       ...savedEvent,
@@ -107,7 +107,7 @@ export const deleteEvent = async (eventId: string): Promise<void> => {
       throw new Error(`Errore nell'eliminazione dell'evento: ${response.status}`);
     }
     
-    toast.success('Evento eliminato con successo');
+    toast.success('Event succesfully deleted');
   } catch (error) {
     console.error('Errore nell\'eliminare l\'evento:', error);
     toast.error('Impossibile eliminare l\'evento');

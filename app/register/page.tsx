@@ -59,12 +59,12 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (!validatePassword()) {
-      setError("La password deve essere lunga almeno 8 caratteri.");
+      setError("Password must be at least 8 characters long.");
       return;
     }
 
     if (!passwordsMatch()) {
-      setError("Le password non corrispondono.");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -91,7 +91,7 @@ export default function RegisterPage() {
         throw new Error(data.message || "Errore durante la registrazione");
       }
 
-      toast.success("Registrazione completata con successo!");
+      toast.success("Registration completed successfully!");
       // Accedi automaticamente dopo la registrazione
       await signIn("credentials", {
         redirect: false,
@@ -102,8 +102,8 @@ export default function RegisterPage() {
       router.push("/dashboard");
       router.refresh();
     } catch (error) {
-      setError((error as Error).message || "Errore durante la registrazione");
-      toast.error("Registrazione fallita");
+      setError((error as Error).message || "Error during registration");
+      toast.error("Registration failed");
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +184,7 @@ export default function RegisterPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          Crea un account
+          Create an Account
         </motion.h1>
         
         <AnimatePresence>
@@ -222,7 +222,7 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                placeholder="Il tuo nome"
+                placeholder="Your Name"
                 whileFocus={{ 
                   boxShadow: `0 0 0 2px ${colors.primary}30`,
                   borderColor: colors.primary
@@ -249,7 +249,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                placeholder="nome@esempio.com"
+                placeholder="name@example.com"
                 whileFocus={{ 
                   boxShadow: `0 0 0 2px ${colors.primary}30`,
                   borderColor: colors.primary
@@ -276,7 +276,7 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="Minimo 8 caratteri"
+                placeholder="Minimum 8 characters"
                 whileFocus={{ 
                   boxShadow: `0 0 0 2px ${colors.primary}30`,
                   borderColor: colors.primary
@@ -324,7 +324,7 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                placeholder="Ripeti la password"
+                placeholder="Confirm password"
                 whileFocus={{ 
                   boxShadow: `0 0 0 2px ${colors.primary}30`,
                   borderColor: colors.primary
@@ -379,7 +379,7 @@ export default function RegisterPage() {
                 Registrazione in corso...
               </span>
             ) : (
-              "Registrati"
+              "Sign Up"
             )}
           </motion.button>
         </form>
@@ -391,7 +391,7 @@ export default function RegisterPage() {
               color: colors.textMuted,
               backgroundColor: 'rgba(26, 26, 46, 0.5)'
             }}>
-              oppure continua con
+              or continue with
             </span>
           </div>
           
@@ -429,7 +429,7 @@ export default function RegisterPage() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          Hai già un account?{" "}
+          Already have an account?{" "}
           <motion.span
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
@@ -439,7 +439,7 @@ export default function RegisterPage() {
               className="font-medium hover:underline"
               style={{ color: colors.secondary }}
             >
-              Accedi
+              Sign In
             </Link>
           </motion.span>
         </motion.p>

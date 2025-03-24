@@ -91,7 +91,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
     start: new Date(),
     end: new Date(),
     reminder: false,
-    reminderTime: 15 // minuti prima
+    reminderTime: 15 // minutes prima
   });
 
   useEffect(() => {
@@ -130,11 +130,11 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
   return (
     <div style={styles.eventFormOverlay}>
       <div style={styles.eventForm}>
-        <h3>{formData.id ? 'Modifica Evento' : 'Nuovo Evento'}</h3>
+        <h3>{formData.id ? 'Edit Event' : 'New Event'}</h3>
         
         <form onSubmit={handleSubmit}>
           <div style={styles.formGroup}>
-            <label htmlFor="title">Titolo</label>
+            <label htmlFor="title">Title</label>
             <input
               type="text"
               id="title"
@@ -147,7 +147,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
           </div>
           
           <div style={styles.formGroup}>
-            <label htmlFor="description">Descrizione</label>
+            <label htmlFor="description">Description</label>
             <textarea
               id="description"
               name="description"
@@ -159,7 +159,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
           </div>
           
           <div style={styles.formGroup}>
-            <label htmlFor="location">Luogo</label>
+            <label htmlFor="location">Place</label>
             <input
               type="text"
               id="location"
@@ -172,7 +172,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
           
           <div style={styles.formRow}>
             <div style={styles.formGroup}>
-              <label htmlFor="start">Data e ora di inizio</label>
+              <label htmlFor="start">Start date and time</label>
               <input
                 type="datetime-local"
                 id="start"
@@ -185,7 +185,7 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
             </div>
             
             <div style={styles.formGroup}>
-              <label htmlFor="end">Data e ora di fine</label>
+              <label htmlFor="end">End date and time</label>
               <input
                 type="datetime-local"
                 id="end"
@@ -207,13 +207,13 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
                 checked={formData.reminder}
                 onChange={handleChange}
               />
-              <label htmlFor="reminder">Imposta promemoria</label>
+              <label htmlFor="reminder">Set reminder</label>
             </div>
           </div>
           
           {formData.reminder && (
             <div style={styles.formGroup}>
-              <label htmlFor="reminderTime">Minuti prima</label>
+              <label htmlFor="reminderTime">Minutes before</label>
               <select
                 id="reminderTime"
                 name="reminderTime"
@@ -221,22 +221,22 @@ const EventForm: React.FC<EventFormProps> = ({ event, onSave, onCancel }) => {
                 onChange={handleChange}
                 style={styles.formControl}
               >
-                <option value="5">5 minuti</option>
-                <option value="10">10 minuti</option>
-                <option value="15">15 minuti</option>
-                <option value="30">30 minuti</option>
-                <option value="60">1 ora</option>
-                <option value="1440">1 giorno</option>
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="1440">1 day</option>
               </select>
             </div>
           )}
           
           <div style={styles.formActions}>
             <button type="button" onClick={onCancel} style={styles.btnCancel}>
-              Annulla
+              Cancel
             </button>
             <button type="submit" style={styles.btnSave}>
-              Salva
+              Save
             </button>
           </div>
         </form>

@@ -122,7 +122,7 @@ export default function UserMenuPortal({ user }: UserMenuPortalProps) {
                   onClick={() => handleNavigate('/dashboard/profile')}
                 >
                   <FiUser style={{ color: colors.primary }} />
-                  <span>Profilo</span>
+                  <span>Profile</span>
                 </div>
 
                 <div 
@@ -130,16 +130,10 @@ export default function UserMenuPortal({ user }: UserMenuPortalProps) {
                   onClick={() => handleNavigate('/dashboard/subscription')}
                 >
                   <FiCreditCard style={{ color: colors.primary }} />
-                  <span>Abbonamento</span>
+                  <span>Subscription</span>
                 </div>
                 
-                <div 
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:bg-white/10 cursor-pointer"
-                  onClick={() => handleNavigate('/dashboard/settings')}
-                >
-                  <FiSettings style={{ color: colors.primary }} />
-                  <span>Impostazioni</span>
-                </div>
+                
                 
                 <div 
                   className="flex items-center gap-2 px-4 py-2 text-sm text-white/70 hover:bg-white/10 cursor-pointer"
@@ -149,7 +143,7 @@ export default function UserMenuPortal({ user }: UserMenuPortalProps) {
                   }}
                 >
                   <FiLogOut style={{ color: colors.primary }} />
-                  <span>Disconnetti</span>
+                  <span>Logout</span>
                 </div>
               </div>
             </motion.div>

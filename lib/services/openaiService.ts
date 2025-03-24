@@ -4,7 +4,7 @@ import { PanelType, useWorkspaceStore } from '@/lib/store/workspaceStore';
 import { toast } from 'sonner';
 import { FileStorageService } from './fileStorage';
 import { prisma } from '../auth/prisma-adapter';
-
+import { incrementAndCheckAIRequests } from '@/app/api/ai/request-limiter';
 // Definisce la tipologia di comandi che l'AI può eseguire
 type CommandType = 
   | 'OPEN_APP' 
@@ -70,6 +70,22 @@ async function logAIRequest(userId: string, type: string, tokenCount: number, su
  */
 export async function parseUserCommand(userInput: string, userId: string): Promise<ParsedCommand> {
   try {
+
+    const limitCheck = await incrementAndCheckAIRequests(userId);
+    
+    // Se il limite è stato superato, restituisci un comando di risposta con errore
+    if (!limitCheck.success) {
+      return {
+        type: "ANSWER_QUESTION",
+        params: {
+          question: userInput,
+          limitExceeded: true,
+          limitMessage: limitCheck.message
+        },
+        originalText: userInput
+      };
+    }
+
     const openai = getOpenAIClient();
     
     // Definisce il prompt per analizzare il comando dell'utente
@@ -101,7 +117,7 @@ export async function parseUserCommand(userInput: string, userId: string): Promi
     `;
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-1106",
+      model: "gpt-3.5-turbo",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: systemPrompt },
@@ -149,6 +165,11 @@ export async function parseUserCommand(userInput: string, userId: string): Promi
  */
 export async function executeCommand(command: ParsedCommand, userId: string): Promise<string> {
   try {
+    if (command.type === "ANSWER_QUESTION" && command.params.limitExceeded) {
+      return command.params.limitMessage || 
+             `Mi dispiace, hai raggiunto il limite giornaliero di richieste AI per il tuo piano.`;
+    }
+    
     switch (command.type) {
       case "OPEN_APP":
         return await openApplication(command.params.appType);
@@ -192,8 +213,15 @@ export async function executeCommand(command: ParsedCommand, userId: string): Pr
  */
 export async function answerQuestion(question: string, userId: string): Promise<string> {
   try {
+    const limitCheck = await incrementAndCheckAIRequests(userId);
     const openai = getOpenAIClient();
     
+    if (!limitCheck.success) {
+      return `Mi dispiace, hai raggiunto il limite giornaliero di ${limitCheck.limit} richieste AI per il tuo piano. 
+              Questo limite si resetterà domani, oppure puoi passare a un piano superiore per 
+              avere più richieste giornaliere.`;
+    }
+
     const systemPrompt = `
       Tu sei Jarvis, un assistente AI integrato in un sistema operativo web.
       Sei amichevole, utile e conciso. Rispondi alle domande dell'utente in modo informativo.
@@ -202,7 +230,7 @@ export async function answerQuestion(question: string, userId: string): Promise<
     `;
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: question }

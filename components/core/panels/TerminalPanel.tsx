@@ -20,7 +20,7 @@ export default function TerminalPanel({ panel }: TerminalPanelProps) {
   const [history, setHistory] = useState<HistoryEntry[]>([
     {
       command: '',
-      output: 'Benvenuto in Jarvis Terminal v1.0.0\nDigita "help" per visualizzare i comandi disponibili.\n',
+      output: 'Welcome to Jarvis Terminal v1.0.0\nType "help" to view available commands.\n',
     },
   ])
   const [currentDirectory, setCurrentDirectory] = useState('~')

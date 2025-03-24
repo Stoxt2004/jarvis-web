@@ -115,8 +115,8 @@ export default function HomeClient() {
   // Features data con icone SVG
   const features: Feature[] = [
     {
-      title: "Web OS Futuristico",
-      description: "Accesso diretto via browser con interfaccia modulare, pannelli dinamici e comandi vocali.",
+      title: "Futuristic Web OS",
+      description: "Direct browser access with a modular interface, dynamic panels, and voice commands.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
           <path d="M11.7 2.805a.75.75 0 01.6 0A60.65 60.65 0 0122.83 8.72a.75.75 0 01-.231 1.337 49.949 49.949 0 00-9.902 3.912l-.003.002-.34.18a.75.75 0 01-.707 0A50.009 50.009 0 007.5 12.174v-.224c0-.131.067-.248.172-.311a54.614 54.614 0 014.653-2.52.75.75 0 00-.65-1.352 56.129 56.129 0 00-4.78 2.589 1.858 1.858 0 00-.859 1.228 49.803 49.803 0 00-4.634-1.527.75.75 0 01-.231-1.337A60.653 60.653 0 0111.7 2.805z" />
@@ -127,18 +127,8 @@ export default function HomeClient() {
       color: colors.primary
     },
     {
-      title: "Browser Interno",
-      description: "Web View avanzata con sessioni parallele e filtri di sicurezza configurabili.",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-          <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM6.262 6.072a8.25 8.25 0 1010.562-.766 4.5 4.5 0 01-1.318 1.357L14.25 7.5l.165.33a.809.809 0 01-1.086 1.085l-.604-.302a1.125 1.125 0 00-1.298.21l-.132.131c-.439.44-.439 1.152 0 1.591l.296.296c.256.257.622.374.98.314l1.17-.195c.323-.054.654.036.905.245l1.33 1.108c.32.267.46.694.358 1.1a8.7 8.7 0 01-2.288 4.04l-.723.724a1.125 1.125 0 01-1.298.21l-.153-.076a1.125 1.125 0 01-.622-1.006v-1.089c0-.298-.119-.585-.33-.796l-1.347-1.347a1.125 1.125 0 01-.21-1.298L9.75 12l-1.64-1.64a6 6 0 01-1.676-3.257l-.172-1.03z" clipRule="evenodd" />
-        </svg>
-      ),
-      color: colors.secondary
-    },
-    {
       title: "File Manager",
-      description: "Visualizzazione e gestione di file con drag & drop, tagging e ricerca intelligente.",
+      description: "Browse and manage files with drag & drop, tagging, and smart search.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
           <path d="M19.5 21a3 3 0 003-3v-4.5a3 3 0 00-3-3h-15a3 3 0 00-3 3V18a3 3 0 003 3h15zM1.5 10.146V6a3 3 0 013-3h5.379a2.25 2.25 0 011.59.659l2.122 2.121c.14.141.331.22.53.22H19.5a3 3 0 013 3v1.146A4.483 4.483 0 0019.5 9h-15a4.483 4.483 0 00-3 1.146z" />
@@ -148,7 +138,7 @@ export default function HomeClient() {
     },
     {
       title: "Web IDE",
-      description: "Editor di codice performante con sintassi multilinguaggio e terminale integrato.",
+      description: "High-performance code editor with multi-language syntax support and integrated terminal.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
           <path fillRule="evenodd" d="M14.447 3.027a.75.75 0 01.527.92l-4.5 16.5a.75.75 0 01-1.448-.394l4.5-16.5a.75.75 0 01.921-.526zM16.72 6.22a.75.75 0 011.06 0l5.25 5.25a.75.75 0 010 1.06l-5.25 5.25a.75.75 0 11-1.06-1.06L21.44 12l-4.72-4.72a.75.75 0 010-1.06zm-9.44 0a.75.75 0 010 1.06L2.56 12l4.72 4.72a.75.75 0 11-1.06 1.06L.97 12.53a.75.75 0 010-1.06l5.25-5.25a.75.75 0 011.06 0z" clipRule="evenodd" />
@@ -157,8 +147,8 @@ export default function HomeClient() {
       color: colors.navy
     },
     {
-      title: "Assistente AI",
-      description: "Accessibile vocalmente e testualmente, per gestire file, generare codice e automatizzare task.",
+      title: "AI Assistant",
+      description: "Accessible via voice or text to manage files, generate code, and automate tasks.",
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
           <path d="M16.5 7.5h-9v9h9v-9z" />
@@ -167,16 +157,7 @@ export default function HomeClient() {
       ),
       color: colors.rose
     },
-    {
-      title: "Dashboard Personalizzabile",
-      description: "Layout flessibile con widget personalizzabili e temi grafici custom.",
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-          <path fillRule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clipRule="evenodd" />
-        </svg>
-      ),
-      color: colors.primary
-    }
+
   ]
 
   // Pricing plans data
@@ -184,30 +165,30 @@ export default function HomeClient() {
     {
       name: "Free",
       price: "€0",
-      description: "Funzionalità di base per uso personale",
+      description: "Basic features for personal use",
       features: [
-        "AI assistant con funzioni base",
-        "IDE di base",
-        "5GB di spazio cloud",
-        "1 workspace alla volta",
-        "Supporto community"
+        "Basic AI Assistant",
+        "Basic IDE",
+        "1GB Cloud Storage",
+        "1 Workspace at a time",
+        "Community Support"
       ],
-      cta: "Prova Gratis",
+      cta: "Start for Free",
       highlight: false,
       color: colors.navy
     },
     {
       name: "Premium",
       price: "€9.99",
-      period: "/mese",
-      description: "Tutte le funzionalità per professionisti",
+      period: "/month",
+      description: "All features for professionals",
       features: [
-        "AI assistant avanzato",
-        "IDE completo + terminal",
-        "50GB di spazio cloud",
-        "Workspace illimitati",
-        "API personalizzate",
-        "Supporto prioritario"
+        "Advanced AI Assistant",
+        "Full IDE + Terminal",
+        "10GB Cloud Storage",
+        "Unlimited Workspaces",
+        "Custom APIs",
+        "Priority Support"
       ],
       cta: "Inizia Ora",
       highlight: true,
@@ -259,7 +240,7 @@ export default function HomeClient() {
               href="#features" 
               className="text-white/70 hover:text-white transition-colors"
             >
-              Funzionalità
+              Features
             </Link>
           </motion.div>
           
@@ -271,7 +252,7 @@ export default function HomeClient() {
               href="#pricing" 
               className="text-white/70 hover:text-white transition-colors"
             >
-              Piani
+              Plans
             </Link>
           </motion.div>
           
@@ -293,10 +274,10 @@ export default function HomeClient() {
                   animate={{ rotate: 360 }}
                   transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 ></motion.div>
-                Inizializzazione...
+                Loading...
               </span>
             ) : (
-              'Accedi Demo'
+              'Try For Free'
             )}
           </motion.button>
         </div>
@@ -392,7 +373,7 @@ export default function HomeClient() {
               ease: "easeInOut"
             }}
           >
-            Il tuo Web Operating System del futuro
+            Your Web OS of the Future
           </motion.h1>
           <motion.p 
             className="text-xl md:text-2xl mb-8 leading-relaxed"
@@ -401,8 +382,7 @@ export default function HomeClient() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            Esperienza fluida, potente e completamente accessibile via browser. <br />
-            Ispirato all'assistente Jarvis di Iron Man.
+            A seamless, powerful experience, fully accessible via browser. Inspired by the Jarvis assistant.
           </motion.p>
           
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
@@ -431,7 +411,7 @@ export default function HomeClient() {
                   Inizializzazione...
                 </span>
               ) : (
-                'Prova Demo Gratuita'
+                'Free Trial'
               )}
             </motion.button>
             <motion.div
@@ -442,7 +422,7 @@ export default function HomeClient() {
                 href="#features" 
                 className="px-6 py-3 rounded-md border border-white/20 hover:bg-white/10 text-white transition-colors text-lg w-full md:w-auto flex items-center justify-center"
               >
-                Scopri di più
+                Learn More
               </Link>
             </motion.div>
           </div>
@@ -529,7 +509,7 @@ export default function HomeClient() {
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              Funzionalità Principali
+              Key Features
             </motion.h2>
             <motion.p 
               className="max-w-2xl mx-auto"
@@ -539,11 +519,11 @@ export default function HomeClient() {
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              Jarvis Web OS combina potenza, flessibilità e un'interfaccia futuristica per offrirti un'esperienza completa direttamente nel tuo browser.
+              Jarvis Web OS combines power, flexibility, and a futuristic interface to deliver a complete experience right from your browser.
             </motion.p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {features.map((feature, i) => (
               <motion.div
                 key={i}
@@ -590,109 +570,129 @@ export default function HomeClient() {
       </section>
       
       {/* Pricing */}
-      <section id="pricing" className="py-24 px-4" style={{ background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.background} 100%)` }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <motion.h2 
-              className="text-3xl md:text-4xl font-bold mb-4 text-white"
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              Piani e Abbonamenti
-            </motion.h2>
-            <motion.p 
-              className="max-w-2xl mx-auto"
-              style={{ color: colors.textMuted }}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              Scegli il piano più adatto alle tue esigenze, dalla versione gratuita con funzionalità essenziali al piano premium completo.
-            </motion.p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {pricingPlans.map((plan, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
+<section id="pricing" className="py-24 px-4" style={{ background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.background} 100%)` }}>
+  <div className="max-w-6xl mx-auto">
+    <div className="text-center mb-16">
+      <motion.h2 
+        className="text-3xl md:text-4xl font-bold mb-4 text-white"
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5 }}
+      >
+        Plans & Subscriptions
+      </motion.h2>
+      <motion.p 
+        className="max-w-2xl mx-auto"
+        style={{ color: colors.textMuted }}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        Choose the plan that best fits your needs from the free version with essential features to the complete premium package.
+      </motion.p>
+    </div>
+    
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {pricingPlans.map((plan, i) => (
+        <motion.div
+          key={i}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, delay: i * 0.1 }}
+          className={`p-8 flex flex-col rounded-xl relative ${
+            plan.highlight 
+              ? 'shadow-xl' 
+              : 'hover:shadow-lg transition-all'
+          }`}
+          style={{ 
+            background: `rgba(26, 26, 46, 0.5)`,
+            backdropFilter: 'blur(10px)',
+            border: plan.highlight ? `1px solid ${plan.color}` : '1px solid rgba(255, 255, 255, 0.1)',
+            boxShadow: plan.highlight ? `0 20px 25px -5px ${plan.color}30` : 'none'
+          }}
+          whileHover={{ 
+            y: plan.name === "Free" ? -10 : 0,
+            boxShadow: plan.name === "Free" ? 
+              `0 20px 25px -5px rgba(${parseInt(plan.color.slice(1, 3), 16)}, ${parseInt(plan.color.slice(3, 5), 16)}, ${parseInt(plan.color.slice(5, 7), 16)}, 0.2)` : 'none',
+          }}
+        >
+          {/* Red X overlay for Premium and Team plans */}
+          {plan.name !== "Free" && (
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <motion.div 
+                className="text-red-600 font-bold text-9xl opacity-70"
+                initial={{ scale: 0.8, opacity: 0 }}
+                whileInView={{ scale: 1, opacity: 0.8 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`p-8 flex flex-col rounded-xl ${
-                  plan.highlight 
-                    ? 'shadow-xl' 
-                    : 'hover:shadow-lg transition-all'
-                }`}
+                transition={{ duration: 0.5 }}
                 style={{ 
-                  background: `rgba(26, 26, 46, 0.5)`,
-                  backdropFilter: 'blur(10px)',
-                  border: plan.highlight ? `1px solid ${plan.color}` : '1px solid rgba(255, 255, 255, 0.1)',
-                  boxShadow: plan.highlight ? `0 20px 25px -5px ${plan.color}30` : 'none'
-                }}
-                whileHover={{ 
-                  y: -10,
-                  boxShadow: `0 20px 25px -5px rgba(${parseInt(plan.color.slice(1, 3), 16)}, ${parseInt(plan.color.slice(3, 5), 16)}, ${parseInt(plan.color.slice(5, 7), 16)}, 0.2)`,
+                  textShadow: '0 0 15px rgba(255, 0, 0, 0.7)', 
+                  filter: 'blur(2px)',
+                  transform: 'rotate(-5deg)'
                 }}
               >
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                >
-                  <h3 className="text-xl font-semibold mb-1 text-white">{plan.name}</h3>
-                  <div className="flex items-end mb-4">
-                    <span className="text-3xl font-bold text-white">{plan.price}</span>
-                    {plan.period && <span style={{ color: colors.textMuted }} className="ml-1">{plan.period}</span>}
-                  </div>
-                </motion.div>
-                <p style={{ color: colors.textMuted }} className="mb-6">{plan.description}</p>
-                
-                <ul className="space-y-3 mb-8 flex-grow">
-                  {plan.features.map((feature, j) => (
-                    <motion.li 
-                      key={j} 
-                      className="flex items-start"
-                      initial={{ opacity: 0, x: -20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.3, delay: j * 0.1 + 0.2 }}
-                    >
-                      <span style={{ color: plan.color }} className="mr-2 flex-shrink-0">✓</span>
-                      <span className="text-white">{feature}</span>
-                    </motion.li>
-                  ))}
-                </ul>
-                
-                <motion.button 
-                  className={`mt-auto px-4 py-3 rounded-md text-white`}
-                  style={{ 
-                    background: plan.highlight 
-                      ? `linear-gradient(135deg, ${plan.color} 0%, ${colors.secondary} 100%)` 
-                      : 'transparent',
-                    border: plan.highlight ? 'none' : `1px solid ${colors.textMuted}`,
-                    boxShadow: plan.highlight ? `0 4px 15px ${plan.color}40` : 'none'
-                  }}
-                  whileHover={{ 
-                    scale: 1.05, 
-                    boxShadow: plan.highlight 
-                      ? `0 8px 25px ${plan.color}50` 
-                      : `0 8px 25px rgba(255, 255, 255, 0.1)`,
-                    background: plan.highlight 
-                      ? `linear-gradient(135deg, ${plan.color} 20%, ${colors.secondary} 80%)` 
-                      : `rgba(255, 255, 255, 0.1)`
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {plan.cta}
-                </motion.button>
+                X
               </motion.div>
+            </div>
+          )}
+          
+          <motion.div
+            whileHover={{ scale: plan.name === "Free" ? 1.05 : 1 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          >
+            <h3 className="text-xl font-semibold mb-1 text-white">{plan.name}</h3>
+            <div className="flex items-end mb-4">
+              <span className="text-3xl font-bold text-white">{plan.price}</span>
+              {plan.period && <span style={{ color: colors.textMuted }} className="ml-1">{plan.period}</span>}
+            </div>
+          </motion.div>
+          <p style={{ color: colors.textMuted }} className="mb-6">{plan.description}</p>
+          
+          <ul className="space-y-3 mb-8 flex-grow">
+            {plan.features.map((feature, j) => (
+              <motion.li 
+                key={j} 
+                className="flex items-start"
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: j * 0.1 + 0.2 }}
+              >
+                <span style={{ color: plan.color }} className="mr-2 flex-shrink-0">✓</span>
+                <span className="text-white">{feature}</span>
+              </motion.li>
             ))}
-          </div>
-        </div>
-      </section>
+          </ul>
+          
+          <motion.button 
+            className={`mt-auto px-4 py-3 rounded-md text-white ${plan.name !== "Free" ? "opacity-50 cursor-not-allowed" : ""}`}
+            style={{ 
+              background: plan.highlight 
+                ? `linear-gradient(135deg, ${plan.color} 0%, ${colors.secondary} 100%)` 
+                : 'transparent',
+              border: plan.highlight ? 'none' : `1px solid ${colors.textMuted}`,
+              boxShadow: plan.highlight ? `0 4px 15px ${plan.color}40` : 'none'
+            }}
+            whileHover={{ 
+              scale: plan.name === "Free" ? 1.05 : 1, 
+              boxShadow: plan.name === "Free" ? 
+                `0 8px 25px ${plan.color}50` : 'none',
+              background: plan.name === "Free" && plan.highlight ? 
+                `linear-gradient(135deg, ${plan.color} 20%, ${colors.secondary} 80%)` : 
+                plan.name === "Free" ? `rgba(255, 255, 255, 0.1)` : 'transparent'
+            }}
+            whileTap={{ scale: plan.name === "Free" ? 0.95 : 1 }}
+          >
+            {plan.cta}
+          </motion.button>
+        </motion.div>
+      ))}
+    </div>
+  </div>
+</section>
       
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-white/10" style={{ background: colors.background }}>
@@ -706,7 +706,7 @@ export default function HomeClient() {
           </motion.div>
           
           <div className="flex flex-wrap justify-center items-center gap-4 md:gap-8">
-            {['Privacy Policy', 'Termini di Servizio', 'Contattaci', 'FAQ'].map((item, i) => (
+            {['Privacy Policy', 'Terms of Service', 'Contact Us', 'FAQ'].map((item, i) => (
               <motion.div
                 key={i}
                 whileHover={{ scale: 1.1, color: colors.primary }}

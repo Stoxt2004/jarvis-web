@@ -1,29 +1,186 @@
-// src/components/ai/AIAssistant.tsx
+// components/ai/AIAssistant.tsx
+// Complete version with limit synchronization and command functionality
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiSend, FiMic, FiMicOff, FiX, FiLoader, FiCode, FiMaximize2, FiMinimize2 } from 'react-icons/fi';
+import { FiSend, FiMic, FiMicOff, FiX, FiLoader, FiCode, FiAlertCircle, FiArrowUp } from 'react-icons/fi';
 import { useAIStore } from '@/lib/store/aiStore';
 import { toast } from 'sonner';
 import MultiFileAIAnalysis from './MultiFileAIAnalysis';
 import { usePanelIntegrationStore } from '@/lib/store/usePanelIntegrationStore';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useSession } from 'next-auth/react';
+import { answerQuestion, parseUserCommand, executeCommand, ParsedCommand } from '@/lib/services/openaiService';
+import { AIIntegrationService } from '@/lib/services/aiIntegrationService';
+import { useRouter } from 'next/navigation';
+import { useAILimits } from '@/components/premium/UsageLimitsNotifier';
+import { getPlanLimits } from '@/lib/stripe/config';
+import { aiEvents, AI_EVENTS } from '@/lib/events/aiEvents';
 
-export default function AIAssistant() {
+// Interface for LimitExceededOverlay component props
+interface LimitExceededOverlayProps {
+  onUpgrade: () => void;
+  planLimit: number;
+}
+
+// Overlay component for when the limit is reached
+const LimitExceededOverlay: React.FC<LimitExceededOverlayProps> = ({ onUpgrade, planLimit }) => (
+  <div className="absolute inset-0 z-50 bg-surface-dark/95 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center">
+    <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mb-4">
+      <FiAlertCircle size={32} className="text-red-500" />
+    </div>
+    <h3 className="text-xl font-semibold mb-2">Daily limit reached</h3>
+    <p className="text-white/70 mb-6 max-w-md">
+      You have used all {planLimit} AI requests available for today with your current plan.
+      Try again tomorrow or upgrade to Premium to get more daily requests.
+    </p>
+    <div className="space-y-3">
+      <button
+        className="w-full py-2.5 px-6 bg-primary hover:bg-primary/90 rounded-lg font-medium"
+        onClick={onUpgrade}
+      >
+        Upgrade to {planLimit >= 500 ? 'Team' : 'Premium'}
+      </button>
+      <div className="text-sm text-white/50">
+        The limit resets automatically at midnight
+      </div>
+    </div>
+  </div>
+);
+
+// Function to check if the limit has been reached in sessionStorage
+// This function is also called by window events to synchronize instances
+const isLimitExceeded = (): boolean => {
+  return sessionStorage.getItem('ai_limit_exceeded') === 'true';
+};
+
+const AIAssistant: React.FC = () => {
+  const router = useRouter();
   const { toggleAssistant } = useAIStore();
-  const [input, setInput] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
+  const [input, setInput] = useState<string>('');
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
-    { role: 'assistant', content: 'Ciao! Sono Jarvis, il tuo assistente AI. Come posso aiutarti oggi?' }
+    { role: 'assistant', content: 'Hello! I\'m Jarvis, your AI assistant. How can I help you today?' }
   ]);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isTyping, setIsTyping] = useState<boolean>(false);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const [showMultiFileAnalysis, setShowMultiFileAnalysis] = useState(false);
+  const [showMultiFileAnalysis, setShowMultiFileAnalysis] = useState<boolean>(false);
   const { selectedPanelsForAI } = usePanelIntegrationStore();
   const { subscription, hasAccess } = useSubscription();
-  const [showPremiumBanner, setShowPremiumBanner] = useState(false);
+  const [showPremiumBanner, setShowPremiumBanner] = useState<boolean>(false);
+  const { data: session } = useSession();
   
-  // Colori per mantenere coerenza con il resto dell'app
+  // Verify the limit directly via context
+  const { isAILimitExceeded: contextLimitExceeded, aiUsageStats } = useAILimits();
+  
+  // Local management of reached limit
+  const [localAILimitExceeded, setLocalAILimitExceeded] = useState<boolean>(isLimitExceeded());
+  
+  // Local counter of AI requests made since the last page load
+  const [localAIRequestCount, setLocalAIRequestCount] = useState<number>(0);
+  
+  // Get the current plan limits
+  const planLimits = getPlanLimits(subscription.plan);
+
+  // SYNC: Event handler for state synchronization
+  useEffect(() => {
+    // Create a custom event to synchronize all instances of AIAssistant
+    const syncLimitStatus = () => {
+      const currentLimitStatus = isLimitExceeded();
+      setLocalAILimitExceeded(currentLimitStatus);
+    };
+
+    // Register for limit reached events
+    const handleLimitReached = () => {
+      setLocalAILimitExceeded(true);
+    };
+
+    // Add event listeners for custom and standard events
+    aiEvents.on(AI_EVENTS.LIMIT_REACHED, handleLimitReached);
+    window.addEventListener('storage', syncLimitStatus); // For tab synchronization
+    window.addEventListener('ai_limit_status_change', syncLimitStatus);
+
+    // Create an interval to periodically check the status
+    const checkInterval = setInterval(syncLimitStatus, 2000);
+
+    // Cleanup
+    return () => {
+      aiEvents.off(AI_EVENTS.LIMIT_REACHED, handleLimitReached);
+      window.removeEventListener('storage', syncLimitStatus);
+      window.removeEventListener('ai_limit_status_change', syncLimitStatus);
+      clearInterval(checkInterval);
+    };
+  }, []);
+
+  // SYNC: Update local state when contextLimitExceeded changes
+  useEffect(() => {
+    if (contextLimitExceeded) {
+      setLocalAILimitExceeded(true);
+      sessionStorage.setItem('ai_limit_exceeded', 'true');
+    }
+  }, [contextLimitExceeded]);
+  
+  // Function to check if we have reached the limit
+  const checkAndUpdateLimits = (): boolean => {
+    // First check if the limit has already been reached in sessionStorage
+    if (isLimitExceeded()) {
+      setLocalAILimitExceeded(true);
+      return true;
+    }
+    
+    // Calculate the total considering the requests counted by the API + local ones
+    const totalRequests = aiUsageStats.current + localAIRequestCount;
+    
+    // If the total exceeds the limit, set the limit reached flag
+    if (totalRequests >= planLimits.aiRequests) {
+      console.log(`AI limit reached in real time: ${totalRequests}/${planLimits.aiRequests}`);
+      setLocalAILimitExceeded(true);
+      sessionStorage.setItem('ai_limit_exceeded', 'true');
+      
+      // Emit an event to notify of the state change
+      aiEvents.emit(AI_EVENTS.LIMIT_REACHED);
+      
+      // Create a storage change event to synchronize all instances
+      window.dispatchEvent(new Event('ai_limit_status_change'));
+      
+      // Show a toast to inform the user
+      toast.error(
+        <div className="flex flex-col">
+  <strong>Daily AI request limit reached</strong>
+  <span className="text-sm">You have used all your {planLimits.aiRequests} AI requests for today.</span>
+</div>,
+{ duration: 6000 }
+      );
+      
+      return true; // Limit reached
+    }
+    
+    return false; // Limit not reached
+  };
+  
+  // Check sessionStorage at startup
+  useEffect(() => {
+    // Synchronize at the beginning
+    setLocalAILimitExceeded(isLimitExceeded());
+  }, []);
+  
+  // Proactive verification of limits at startup and at each change of aiUsageStats
+  useEffect(() => {
+    // Check if the total count has already exceeded the limit
+    const totalRequests = aiUsageStats.current + localAIRequestCount;
+    if (totalRequests >= planLimits.aiRequests) {
+      setLocalAILimitExceeded(true);
+      sessionStorage.setItem('ai_limit_exceeded', 'true');
+      
+      // Emit a change event
+      window.dispatchEvent(new Event('ai_limit_status_change'));
+      
+      console.log(`AI limit already exceeded: ${totalRequests}/${planLimits.aiRequests}`);
+    }
+  }, [aiUsageStats, localAIRequestCount, planLimits.aiRequests]);
+  
+  // Colors to maintain consistency with the rest of the app
   const colors = {
     primary: "#A47864",
     secondary: "#A78BFA",
@@ -31,81 +188,150 @@ export default function AIAssistant() {
     background: "#0F0F1A",
     surface: "#1A1A2E",
     text: "#FFFFFF",
-    textMuted: "rgba(255, 255, 255, 0.7)"
+    textMuted: "rgba(255, 255, 255, 0.7)",
+    rose: "#D58D8D", // For error messages and limits
   };
   
-  // Scroll automatico ai nuovi messaggi
+  // Automatic scroll to new messages
   useEffect(() => {
     endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
   
-  // Inizializza speech recognition
+  // Initialize speech recognition
   useEffect(() => {
-    // Focus sull'input all'apertura
+    // Focus on input when opening
     inputRef.current?.focus();
-    
-    // Qui andrebbe l'inizializzazione del riconoscimento vocale
-    // che per semplicità non implementiamo completamente
   }, []);
   
-  // Gestione invio messaggio
+  // Handle message sending - NOW WITH EVENT SYSTEM AND COMMANDS
   const handleSendMessage = async () => {
     if (!input.trim()) return;
     
-    // Controlla se l'utente sta cercando di usare l'analisi multi-file senza il piano premium
-    if (input.toLowerCase().includes('analizz') && input.toLowerCase().includes('file') && !subscription.isPremium) {
+    // Verify the limit again immediately before proceeding
+    if (isLimitExceeded() || localAILimitExceeded) {
+      setLocalAILimitExceeded(true);
+      toast.error('You have reached the daily limit of AI requests');
+      return;
+    }
+    
+    // Real-time verification before proceeding
+    if (checkAndUpdateLimits()) {
+      toast.error('You have reached the daily limit of AI requests');
+      return;
+    }
+    
+    // Check if the user is trying to use multi-file analysis without the premium plan
+    if (input.toLowerCase().includes('analyz') && input.toLowerCase().includes('file') && !subscription.isPremium) {
       setShowPremiumBanner(true);
       return;
     }
     
-    // Aggiungi il messaggio dell'utente
+    // Add the user's message
     const userMessage = input.trim();
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
     setIsTyping(true);
     
-    // Avvia l'animazione di typing
-    setTimeout(() => {
-      // Simulazione risposta AI (in un'app reale, qui ci sarebbe una chiamata API)
-      const assistantResponses: Record<string, string> = {
-        'ciao': 'Ciao! Come posso aiutarti oggi?',
-        'chi sei': 'Sono Jarvis, un assistente AI integrato nella piattaforma Jarvis Web OS. Posso aiutarti con la programmazione, rispondere a domande e molto altro.',
-        'aiuto': 'Posso aiutarti in molti modi! Posso generare codice, aiutarti con il debugging, fornire informazioni, organizzare i tuoi file e molto altro. Prova a chiedermi qualcosa di specifico.',
-        'default': 'Ho ricevuto il tuo messaggio. Posso aiutarti con qualcos\'altro?'
-      };
+    // Increment the local request counter
+    setLocalAIRequestCount(prev => prev + 1);
+    
+    try {
+      // Verify once more after incrementing the local counter
+      if (checkAndUpdateLimits()) {
+        // If we have now exceeded the limit, show an error message
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `I'm sorry, you have reached the limit of ${planLimits.aiRequests} AI requests for today. Try again tomorrow or consider upgrading your plan.` 
+        }]);
+        setIsTyping(false);
+        return;
+      }
       
-      // Trova la risposta più appropriata
-      let response = '';
-      for (const [key, value] of Object.entries(assistantResponses)) {
-        if (userMessage.toLowerCase().includes(key)) {
-          response = value;
-          break;
+      // Step 1: Analyze the user's command
+      const userId = session?.user?.id || 'guest-user';
+      let parsedCommand: ParsedCommand;
+      
+      try {
+        parsedCommand = await parseUserCommand(userMessage, userId);
+        console.log("Analyzed command:", parsedCommand);
+      } catch (error) {
+        console.error("Error in command analysis:", error);
+        // If there's an error in the analysis, treat as a generic question
+        parsedCommand = {
+          type: "ANSWER_QUESTION",
+          params: { question: userMessage },
+          originalText: userMessage
+        };
+      }
+      
+      // Step 2: Generate a response to the user based on the analyzed command
+      const aiResponse = await executeCommand(parsedCommand, userId);
+      
+      // Step 3: Execute system actions if necessary
+      if (parsedCommand.type !== "ANSWER_QUESTION" && parsedCommand.type !== "UNKNOWN") {
+        try {
+          // If we're here, it's a system command (e.g., opening/closing apps, file management)
+          await AIIntegrationService.executeSystemAction(parsedCommand, userId);
+        } catch (error) {
+          console.error("Error executing system command:", error);
+          // Continue anyway, the response has already been generated
         }
       }
       
-      if (!response) {
-        response = assistantResponses.default;
+      // Emit the request sent event to update statistics in real time
+      aiEvents.emit(AI_EVENTS.REQUEST_SENT);
+      
+      // Check again after the response if we have reached the limit
+      checkAndUpdateLimits();
+      
+      // Check if the response contains a message about exceeding the limit
+      if (aiResponse.toLowerCase().includes('reached the limit') || 
+          aiResponse.toLowerCase().includes('ai request limit') || 
+          aiResponse.toLowerCase().includes('daily limit')) {
+        console.log('AI request limit reached, disabling input');
+        setLocalAILimitExceeded(true);
+        sessionStorage.setItem('ai_limit_exceeded', 'true');
+        
+        // Emit the event again in case the limit is reached
+        aiEvents.emit(AI_EVENTS.LIMIT_REACHED);
+        // Create a storage change event to synchronize all instances
+        window.dispatchEvent(new Event('ai_limit_status_change'));
       }
       
-      // Se il messaggio include riferimenti a file o analisi, suggerisci di usare l'analisi multi-file
-      if (userMessage.toLowerCase().includes('file') || 
-          userMessage.toLowerCase().includes('analizz') || 
-          userMessage.toLowerCase().includes('codice')) {
-        response += '\n\nSe vuoi analizzare il tuo codice, posso esaminare più file contemporaneamente. Prova l\'analisi multi-file cliccando sul pulsante qui sotto.';
-      }
-      
-      // Aggiungi la risposta dell'assistente
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+      // Add the assistant's response
+      setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
+    } catch (error) {
+      console.error('Error in OpenAI call:', error);
+      // Fallback in case of error
+      setMessages(prev => [...prev, { 
+        role: 'assistant', 
+        content: 'I\'m sorry, an error occurred while processing your request. Can you try again shortly?' 
+      }]);
+      toast.error('Error in communication with the AI assistant');
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
   
-  // Toggle del riconoscimento vocale
+  // Toggle voice recognition
   const handleVoiceToggle = () => {
+    // Do not allow voice recording if the limit has been exceeded
+    if (isLimitExceeded() || localAILimitExceeded) {
+      setLocalAILimitExceeded(true);
+      toast.error('You have reached the daily limit of AI requests');
+      return;
+    }
+    
+    // Real-time verification before proceeding
+    if (checkAndUpdateLimits()) {
+      toast.error('You have reached the daily limit of AI requests');
+      return;
+    }
+    
     if (isRecording) {
       // Stop recording logic
       setIsRecording(false);
-      toast.info('Registrazione vocale terminata');
+      toast.info('Voice recording ended');
     } else {
       // Check microphone permission and start recording
       if (!hasAccess('voiceCommands')) {
@@ -114,12 +340,13 @@ export default function AIAssistant() {
       }
       
       setIsRecording(true);
-      toast.info('Registrazione vocale avviata. Parla ora...');
+      toast.info('Voice recording started. Speak now...');
       
-      // Simulazione riconoscimento vocale (dopo 3 secondi)
+      // Real implementation of voice recognition will go here
+      // For now we maintain the simulation
       setTimeout(() => {
         setIsRecording(false);
-        setInput('Mostrami lo stato del progetto');
+        setInput('Show me the project status');
       }, 3000);
     }
   };
@@ -141,8 +368,18 @@ export default function AIAssistant() {
     }
   };
   
+  // Function to navigate to the subscription page
+  const goToSubscription = () => {
+    router.push('/dashboard/subscription');
+  };
+  
   return (
-    <div className="flex flex-col h-full" style={{ backgroundColor: colors.surface }}>
+    <div className="flex flex-col h-full relative" style={{ backgroundColor: colors.surface }}>
+      {/* Overlay for exceeded limit */}
+      {localAILimitExceeded && (
+        <LimitExceededOverlay onUpgrade={goToSubscription} planLimit={planLimits.aiRequests} />
+      )}
+      
       {/* Header */}
       <div className="p-4 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center">
@@ -163,15 +400,20 @@ export default function AIAssistant() {
           </motion.div>
           <div>
             <h3 className="font-medium">Jarvis AI</h3>
-            <p className="text-xs" style={{ color: colors.textMuted }}>Assistente personale</p>
+            <p className="text-xs" style={{ color: colors.textMuted }}>Personal assistant</p>
           </div>
         </div>
         
         <div className="flex items-center space-x-2">
+          {/* Show AI usage statistics */}
+          <div className="text-xs text-white/50 px-2 py-1 bg-white/10 rounded-full">
+            {aiUsageStats.current + localAIRequestCount}/{aiUsageStats.limit} requests
+          </div>
+          
           <button 
             className="p-1.5 rounded hover:bg-white/10 transition-colors"
             onClick={() => setShowMultiFileAnalysis(!showMultiFileAnalysis)}
-            title="Analisi multi-file"
+            title="Multi-file analysis"
           >
             <FiCode size={18} className={showMultiFileAnalysis ? 'text-primary' : 'text-white/70'} />
           </button>
@@ -179,7 +421,7 @@ export default function AIAssistant() {
           <button 
             className="p-1.5 rounded hover:bg-white/10 transition-colors text-white/70"
             onClick={() => toggleAssistant(false)}
-            title="Chiudi assistente"
+            title="Close assistant"
           >
             <FiX size={18} />
           </button>
@@ -234,24 +476,22 @@ export default function AIAssistant() {
               >
                 <div className="flex items-start">
                   <div className="flex-1">
-                    <h4 className="font-medium mb-1">Sblocca Analisi Multi-file e AI Avanzata</h4>
+                    <h4 className="font-medium mb-1">Unlock Multi-file Analysis and Advanced AI</h4>
                     <p className="text-sm" style={{ color: colors.textMuted }}>
-                      L'analisi di più file contemporanei e i comandi vocali avanzati sono disponibili esclusivamente per gli abbonati Premium.
+                      Analysis of multiple files simultaneously and advanced voice commands are exclusively available for Premium subscribers.
                     </p>
                     <div className="mt-3 flex items-center space-x-3">
                       <button
                         className="px-3 py-1.5 rounded text-sm bg-primary hover:bg-primary/90"
-                        onClick={() => {
-                          window.location.href = '/dashboard/subscription';
-                        }}
+                        onClick={goToSubscription}
                       >
-                        Passa a Premium
+                        Upgrade to Premium
                       </button>
                       <button
                         className="px-3 py-1.5 rounded text-sm bg-white/10 hover:bg-white/20"
                         onClick={() => setShowPremiumBanner(false)}
                       >
-                        Non ora
+                        Not now
                       </button>
                     </div>
                   </div>
@@ -266,53 +506,59 @@ export default function AIAssistant() {
             )}
           </AnimatePresence>
           
-          {/* Input Area */}
+          {/* Input Area - Disabled when the limit has been exceeded */}
           <div className="p-4 border-t border-white/10">
             <div className="relative">
               <textarea
                 ref={inputRef}
-                className="w-full p-3 pr-24 bg-white/5 rounded-lg outline-none focus:ring-1 focus:ring-primary resize-none"
-                placeholder="Scrivi un messaggio..."
+                className={`w-full p-3 pr-24 bg-white/5 rounded-lg outline-none focus:ring-1 focus:ring-primary resize-none ${localAILimitExceeded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                placeholder={localAILimitExceeded ? "AI request limit reached" : "Write a message..."}
                 rows={1}
                 value={input}
                 onChange={handleInputChange}
                 onKeyPress={handleKeyPress}
                 style={{ maxHeight: '150px', overflowY: 'auto' }}
+                disabled={localAILimitExceeded}
               />
               
               <div className="absolute right-2 bottom-2 flex items-center space-x-2">
                 <button
-                  className={`p-2 rounded-full ${isRecording ? 'bg-red-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/70'}`}
+                  className={`p-2 rounded-full ${isRecording ? 'bg-red-500 text-white' : 'bg-white/10 hover:bg-white/20 text-white/70'} ${localAILimitExceeded ? 'opacity-50 cursor-not-allowed' : ''}`}
                   onClick={handleVoiceToggle}
+                  disabled={localAILimitExceeded}
                 >
                   {isRecording ? <FiMicOff /> : <FiMic />}
                 </button>
                 
                 <button
-                  className={`p-2 rounded-full ${input.trim() ? 'bg-primary hover:bg-primary/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
+                  className={`p-2 rounded-full ${input.trim() && !localAILimitExceeded ? 'bg-primary hover:bg-primary/90' : 'bg-white/10 text-white/30 cursor-not-allowed'}`}
                   onClick={handleSendMessage}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || localAILimitExceeded}
                 >
                   <FiSend />
                 </button>
               </div>
             </div>
             
-            {/* Suggestion chips */}
-            <div className="mt-3 flex flex-wrap gap-2">
-              {['Genera un componente React', 'Analizza il mio codice', 'Come posso migliorare le performance?'].map((suggestion, i) => (
-                <button
-                  key={i}
-                  className="px-3 py-1 text-xs rounded-full bg-white/10 hover:bg-white/20 transition-colors truncate max-w-[180px]"
-                  onClick={() => setInput(suggestion)}
-                >
-                  {suggestion}
-                </button>
-              ))}
-            </div>
+            {/* Suggestion chips - hidden when the limit has been exceeded */}
+            {!localAILimitExceeded && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {['Generate a React component', 'Analyze my code', 'How can I improve performance?'].map((suggestion, i) => (
+                  <button
+                    key={i}
+                    className="px-3 py-1 text-xs rounded-full bg-white/10 hover:bg-white/20 transition-colors truncate max-w-[180px]"
+                    onClick={() => setInput(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
     </div>
   );
-}
+};
+
+export default AIAssistant;

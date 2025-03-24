@@ -66,7 +66,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
           setEvents(fetchedEvents);
         } catch (error) {
           console.error("Errore nel recupero degli eventi:", error);
-          toast.error("Impossibile caricare gli eventi");
+          toast.error("Unable to load events");
         } finally {
           setIsLoading(false);
         }
@@ -95,7 +95,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
 
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per creare eventi");
+      toast.error("You must be logged in to save events");
       return;
     }
     
@@ -116,7 +116,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
 
   const handleSaveEvent = async (eventData: CalendarEvent) => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per salvare eventi");
+      toast.error("You must be logged in to save events");
       return;
     }
     
@@ -147,13 +147,13 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
       }
     } catch (error) {
       console.error('Errore nel salvare l\'evento:', error);
-      toast.error("Impossibile salvare l'evento");
+      toast.error("Unable to save the event");
     }
   };
 
   const handleDeleteEvent = async (eventId: string) => {
     if (!session?.user?.id) {
-      toast.error("Devi effettuare l'accesso per eliminare eventi");
+      toast.error("You must be logged in to delete events");
       return;
     }
     
@@ -163,7 +163,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
       setSelectedEvent(null);
     } catch (error) {
       console.error('Errore nell\'eliminare l\'evento:', error);
-      toast.error("Impossibile eliminare l'evento");
+      toast.error("Unable to delete the event");
     }
   };
 
@@ -212,7 +212,7 @@ const CalendarPanel: React.FC<CalendarPanelProps> = ({ panel }) => {
         onNavigate={handleNavigate}
         onAddEvent={() => {
           if (!session?.user?.id) {
-            toast.error("Devi effettuare l'accesso per creare eventi");
+            toast.error("You must be logged in to create events");
             return;
           }
           

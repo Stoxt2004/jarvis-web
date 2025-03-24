@@ -14,7 +14,7 @@ export default function UsageStats() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
-  // Aggiungiamo useCallback per definire fetchUsage una sola volta
+  // Utilizziamo useCallback per definire fetchUsage una sola volta
   const fetchUsage = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
@@ -25,22 +25,25 @@ export default function UsageStats() {
       if (response.ok) {
         const data = await response.json();
         console.log('Dati di utilizzo ricevuti:', data);
+        console.log('Piano attuale:', data.currentPlan);
+        console.log('Limiti: Storage:', data.storageLimit, 'AI:', data.aiRequestsLimit, 'Workspaces:', data.workspacesLimit);
         
+        // Qui è la correzione: assicuriamoci di mappare correttamente i dati dall'API
         setUsage({
           storage: { 
-            used: data.storage,
-            limit: data.storageLimit,
-            percentage: data.storagePercentage
+            used: data.storage || 0,
+            limit: data.storageLimit || 5,
+            percentage: data.storagePercentage || 0
           },
           aiRequests: { 
-            used: data.aiRequests,
-            limit: data.aiRequestsLimit,
-            percentage: data.aiRequestsPercentage
+            used: data.aiRequests || 0,
+            limit: data.aiRequestsLimit || 50,
+            percentage: data.aiRequestsPercentage || 0
           },
           workspaces: { 
-            used: data.workspaces,
-            limit: data.workspacesLimit,
-            percentage: data.workspacesPercentage
+            used: data.workspaces || 0,
+            limit: data.workspacesLimit || 1,
+            percentage: data.workspacesPercentage || 0
           }
         });
         
@@ -93,12 +96,12 @@ export default function UsageStats() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-lg font-semibold">Utilizzo risorse</h2>
+        <h2 className="text-lg font-semibold">Resource Usage</h2>
         
         <div className="flex items-center gap-3">
           <div className="text-xs text-white/50 flex items-center gap-1">
             <FiClock className="text-white/30" />
-            <span>Aggiornato: {formatLastUpdated()}</span>
+            <span>Updated: {formatLastUpdated()}</span>
           </div>
           
           <button 
@@ -129,7 +132,7 @@ export default function UsageStats() {
               <span>
                 {usage.storage.used < 0.01 
                   ? `${(usage.storage.used * 1024).toFixed(1)} MB` 
-                  : `${usage.storage.used.toFixed(2)} GB`} / {usage.storage.limit} GB
+                  : `${usage.storage.used.toFixed(2)} GB`} / {typeof usage.storage.limit === 'number' ? `${usage.storage.limit} GB` : usage.storage.limit}
               </span>
             </div>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">

@@ -83,7 +83,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({ view, date, onViewCha
           style={styles.navButton} 
           onClick={() => onNavigate(new Date())}
         >
-          Oggi
+          Today
         </button>
         <button 
           style={styles.navButton} 
@@ -130,7 +130,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({ view, date, onViewCha
           }} 
           onClick={() => onViewChange('month')}
         >
-          Mese
+          Month
         </button>
         <button 
           style={{
@@ -139,8 +139,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({ view, date, onViewCha
           }} 
           onClick={() => onViewChange('week')}
         >
-          Settimana
-        </button>
+Week        </button>
         <button 
           style={{
             ...styles.viewButton,
@@ -148,7 +147,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({ view, date, onViewCha
           }} 
           onClick={() => onViewChange('day')}
         >
-          Giorno
+          Day
         </button>
         <button 
           style={{
@@ -157,12 +156,12 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({ view, date, onViewCha
           }} 
           onClick={() => onViewChange('agenda')}
         >
-          Agenda
+          Schedule
         </button>
       </div>
       
       <button style={styles.addEventButton} onClick={onAddEvent}>
-        + Nuovo Evento
+        + New Event
       </button>
     </div>
   );

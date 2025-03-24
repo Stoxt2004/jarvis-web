@@ -82,11 +82,11 @@ export default function DropZoneWrapper({
               const file = await getFile(data.fileId);
               
               if (!file) {
-                toast.error('File non trovato');
+                toast.error('File not found');
                 return;
               }
               
-              console.log('File recuperato per apertura:', file);
+              console.log('File retrieved for opening:', file);
               
               // Verifica se il tipo è accettato
               const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
@@ -95,7 +95,7 @@ export default function DropZoneWrapper({
                                 acceptedTypes.includes(file.type);
               
               if (!isAccepted) {
-                toast.error(`Tipo di file non supportato: ${fileExt || file.type}`);
+                toast.error(`File type not supported: ${fileExt || file.type}`);
                 return;
               }
               
@@ -104,20 +104,20 @@ export default function DropZoneWrapper({
               onFileDrop(file);
               
               // Feedback per l'utente
-              toast.success(`File "${file.name}" aperto nell'editor`, {
-                description: 'Puoi modificare il contenuto e salvarlo',
-                duration: 3000
+              toast.success(`File "${file.name}" opened in the editor`, {
+    description: 'You can modify the content and save it',
+    duration: 3000
               });
             }
           } catch (parseError) {
             console.error('Errore nel parsing JSON:', parseError);
-            toast.error('Formato dati non valido');
+            toast.error('Invalid data format');
           }
         }
       }
     } catch (error) {
       console.error('Errore durante il drop:', error);
-      toast.error('Si è verificato un errore durante il drop');
+      toast.error('An error occurred during the drop');
     }
   };
   

@@ -17,6 +17,7 @@ import Link from 'next/link'
 import router from 'next/router'
 import UserMenuPortal from '@/components/user/UserMenuPortal'
 import UsageStats from '@/components/dashboard/UsageStats';
+import PremiumBanner from '@/components/premium/PremiumBanner'
 export default function Dashboard() {
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
@@ -222,68 +223,56 @@ export default function Dashboard() {
       </motion.header>
       
       {/* Main Content */}
-<div className="flex-1 flex">
+      <div className="flex-1 flex">
   {/* Workspace */}
   <motion.div 
-    className="flex-1 relative h-[calc(100vh-64px)]" // Aggiungi height esplicita
+  className="flex-1 relative"
+  style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column' }}
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.5, delay: 0.2 }}
+>
+  {subscription?.status !== 'ACTIVE' && <PremiumBanner />}
+  
+  <motion.div 
+    className="p-4 flex-1 relative"
+    style={{ overflow: 'auto' }}
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
-    transition={{ duration: 0.5, delay: 0.2 }}
+    transition={{ duration: 0.5, delay: 0.6 }}
   >
-    {subscription?.status !== 'ACTIVE' && (
-      <motion.div 
-        className="p-4 m-4 rounded-lg"
-        style={{ 
-          background: `linear-gradient(135deg, ${colors.primary}20 0%, ${colors.secondary}20 100%)`,
-          border: `1px solid ${colors.primary}40`,
-        }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-      >
-        {/* ... contenuto banner premium ... */}
-      </motion.div>
-    )}
+    <Workspace />
     
-    <motion.div 
-      className="p-4 h-full" // Aggiungi h-full
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5, delay: 0.6 }}
-    >
-      <Workspace />
-
-      <div className="absolute top-4 right-4 w-64 glass-panel rounded-lg shadow-lg">
-    <UsageStats />
-  </div>
-      
-    </motion.div>
+    <div className="absolute top-4 right-4 w-64 glass-panel rounded-lg shadow-lg">
+      <UsageStats />
+    </div>
   </motion.div>
-        
-        {/* AI Assistant */}
-        <AnimatePresence>
-          {isAssistantActive && (
-            <motion.div 
-            className="w-80 border-l border-white/10 flex flex-col overflow-hidden"
-  style={{ 
-    background: `rgba(15, 15, 26, 0.5)`,
-    backdropFilter: 'blur(10px)',
-    height: 'calc(100vh - 64px)', // altezza fissa sotto header
-    maxHeight: 'calc(100vh - 64px)',
-  }}
-              initial={{ x: 80, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 80, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <AIAssistant />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+</motion.div>
+  
+  {/* AI Assistant */}
+  <AnimatePresence>
+  {isAssistantActive && (
+    <motion.div 
+      className="w-80 border-l border-white/10 flex flex-col overflow-hidden"
+      style={{ 
+        background: `rgba(15, 15, 26, 0.5)`,
+        backdropFilter: 'blur(10px)',
+        height: 'calc(100vh - 64px)', // mantenuta per compatibilità
+      }}
+      initial={{ x: 80, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: 80, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <AIAssistant />
+    </motion.div>
+  )}
+</AnimatePresence>
+</div>
       
       {/* Command Bar (invisibile fino all'attivazione) */}
       <CommandBar />
+      <UsageLimitsNotifier/>
     </div>
   )
 }

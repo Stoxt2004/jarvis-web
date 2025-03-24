@@ -13,11 +13,11 @@ export default function EnhancedPlanComparison() {
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredFeature, setHoveredFeature] = useState('');
   
-  // Calcola il periodo di fatturazione e i relativi prezzi
-  const billingPeriod = isYearly ? 'anno' : 'mese';
-  const discount = 20; // Sconto del 20% per pagamento annuale
+  // Calculate the billing period and related prices
+  const billingPeriod = isYearly ? 'year' : 'month';
+  const discount = 20; // 20% discount for annual payment
   
-  // Calcola i prezzi con sconto per pagamento annuale
+  // Calculate discounted prices for annual payment
   const getPlanPrice = (basePrice: number, isYearly: boolean): number => {
     if (!basePrice) return 0;
     if (!isYearly) return basePrice;
@@ -26,162 +26,162 @@ export default function EnhancedPlanComparison() {
     return parseFloat((yearlyPrice / 12).toFixed(2));
   };
   
-  // Configura feature avanzate di confronto
+  // Configure advanced comparison features
   const featureGroups = [
     {
-      name: 'Funzionalità di base',
+      name: 'Basic Features',
       features: [
         { 
           id: 'editor', 
-          name: 'Editor di codice',
-          free: 'Base',
-          premium: 'Avanzato con IntelliSense',
-          team: 'Completamente Esteso',
-          info: 'L\'editor premium include completamento del codice, refactoring, debugging e altre funzionalità avanzate'
+          name: 'Code Editor',
+          free: 'Basic',
+          premium: 'Advanced with IntelliSense',
+          team: 'Fully Extended',
+          info: 'The premium editor includes code completion, refactoring, debugging, and other advanced features'
         },
         { 
           id: 'workspace', 
           name: 'Workspace',
           free: '1 workspace',
-          premium: 'Illimitati',
-          team: 'Illimitati',
-          info: 'I workspace ti permettono di separare e organizzare i tuoi progetti'
+          premium: 'Unlimited',
+          team: 'Unlimited',
+          info: 'Workspaces allow you to separate and organize your projects'
         },
         { 
           id: 'storage', 
-          name: 'Spazio di archiviazione',
-          free: '5 GB',
-          premium: '50 GB',
-          team: '100 GB',
-          info: 'Spazio cloud per archiviare i tuoi file, progetti e risorse'
+          name: 'Storage Space',
+          free: '1 GB',
+          premium: '10 GB',
+          team: '25 GB',
+          info: 'Cloud space to store your files, projects, and resources'
         },
         { 
           id: 'ai-usage', 
-          name: 'Richieste AI',
-          free: '50/giorno',
-          premium: '500/giorno',
-          team: '2000/giorno',
-          info: 'Numero di richieste AI per generazione di codice, assistenza e altre funzionalità'
+          name: 'AI Requests',
+          free: '50/day',
+          premium: '500/day',
+          team: '2000/day',
+          info: 'Number of AI requests for code generation, assistance, and other features'
         }
       ]
     },
     {
-      name: 'Assistente AI',
+      name: 'AI Assistant',
       features: [
         { 
           id: 'ai-basic', 
-          name: 'Assistenza di base',
+          name: 'Basic Assistance',
           free: true,
           premium: true,
           team: true,
-          info: 'Risposte a domande, supporto per la ricerca di file e funzionalità di base'
+          info: 'Answers to questions, support for file search, and basic features'
         },
         { 
           id: 'ai-code', 
-          name: 'Generazione di codice',
-          free: 'Limitata',
-          premium: 'Avanzata',
-          team: 'Avanzata',
-          info: 'Genera snippet di codice, funzioni complete e aiuta a risolvere problemi complessi'
+          name: 'Code Generation',
+          free: 'Limited',
+          premium: 'Advanced',
+          team: 'Advanced',
+          info: 'Generates code snippets, complete functions, and helps solve complex problems'
         },
         { 
           id: 'ai-custom', 
-          name: 'Personalizzazione AI',
+          name: 'AI Customization',
           free: false,
           premium: true,
           team: true,
-          info: 'Personalizza il comportamento dell\'assistente AI in base alle tue preferenze'
+          info: 'Customize the AI assistant behavior based on your preferences'
         },
         { 
           id: 'ai-context', 
-          name: 'Consapevolezza del contesto',
+          name: 'Context Awareness',
           free: false,
           premium: true,
           team: true,
-          info: 'L\'AI comprende il contesto del tuo progetto e fornisce assistenza mirata'
+          info: 'The AI understands the context of your project and provides targeted assistance'
         }
       ]
     },
     {
-      name: 'Collaborazione',
+      name: 'Collaboration',
       features: [
         { 
           id: 'share-readonly', 
-          name: 'Condivisione in sola lettura',
+          name: 'Read-only Sharing',
           free: true,
           premium: true,
           team: true,
-          info: 'Condividi file e risorse in modalità di sola lettura con altri utenti'
+          info: 'Share files and resources in read-only mode with other users'
         },
         { 
           id: 'real-time', 
-          name: 'Modifica in tempo reale',
+          name: 'Real-time Editing',
           free: false,
           premium: false,
           team: true,
-          info: 'Collabora in tempo reale con altri membri del team sullo stesso documento'
+          info: 'Collaborate in real-time with other team members on the same document'
         },
         { 
           id: 'comments', 
-          name: 'Commenti e revisioni',
+          name: 'Comments and Reviews',
           free: false,
           premium: true,
           team: true,
-          info: 'Aggiungi commenti, suggerimenti e revisioni ai documenti condivisi'
+          info: 'Add comments, suggestions, and reviews to shared documents'
         },
         { 
           id: 'team-management', 
-          name: 'Gestione team',
+          name: 'Team Management',
           free: false,
           premium: false,
           team: true,
-          info: 'Gestisci i membri del team, assegna ruoli e permessi'
+          info: 'Manage team members, assign roles and permissions'
         }
       ]
     },
     {
-      name: 'Supporto e sicurezza',
+      name: 'Support and Security',
       features: [
         { 
           id: 'support', 
-          name: 'Supporto clienti',
+          name: 'Customer Support',
           free: 'Community',
-          premium: 'Prioritario',
-          team: '24/7 Dedicato',
-          info: 'Accesso a diversi livelli di supporto tecnico in base al tuo piano'
+          premium: 'Priority',
+          team: '24/7 Dedicated',
+          info: 'Access to different levels of technical support based on your plan'
         },
         { 
           id: 'backup', 
-          name: 'Backup automatici',
-          free: 'Giornalieri',
-          premium: 'Ogni 6 ore',
-          team: 'Ogni ora',
-          info: 'Frequenza dei backup automatici dei tuoi dati e progetti'
+          name: 'Automatic Backups',
+          free: 'Daily',
+          premium: 'Every 6 hours',
+          team: 'Hourly',
+          info: 'Frequency of automatic backups of your data and projects'
         },
         { 
           id: 'version-history', 
-          name: 'Cronologia versioni',
-          free: '7 giorni',
-          premium: '90 giorni',
-          team: 'Illimitata',
-          info: 'Periodo di conservazione della cronologia versioni dei tuoi file'
+          name: 'Version History',
+          free: '7 days',
+          premium: '90 days',
+          team: 'Unlimited',
+          info: 'Retention period for version history of your files'
         },
         { 
           id: 'advanced-security', 
-          name: 'Sicurezza avanzata',
+          name: 'Advanced Security',
           free: false,
           premium: true,
           team: true,
-          info: 'Funzionalità di sicurezza avanzate come autenticazione a due fattori e controlli di accesso'
+          info: 'Advanced security features such as two-factor authentication and access controls'
         }
       ]
     }
   ];
   
-  // Gestisce l'avvio del processo di abbonamento
+  // Handles the subscription process
   const handleSubscribe = async (plan: string) => {
     if (subscription.plan === plan && subscription.isActive) {
-      return; // Già abbonato a questo piano
+      return; // Already subscribed to this plan
     }
     
     setIsLoading(true);
@@ -189,17 +189,17 @@ export default function EnhancedPlanComparison() {
     try {
       const priceId = PLANS[plan].stripePriceId;
       if (!priceId) {
-        throw new Error(`ID prezzo non disponibile per il piano ${plan}`);
+        throw new Error(`Price ID not available for plan ${plan}`);
       }
       
       await redirectToCheckout(priceId);
     } catch (error) {
-      console.error('Errore durante la sottoscrizione:', error);
+      console.error('Error during subscription:', error);
       setIsLoading(false);
     }
   };
   
-  // Renderizza il valore di una feature in base al tipo
+  // Renders the value of a feature based on type
   const renderFeatureValue = (value: boolean | string) => {
     if (typeof value === 'boolean') {
       return value ? 
@@ -210,7 +210,7 @@ export default function EnhancedPlanComparison() {
     return <span>{value}</span>;
   };
   
-  // Animazioni per feature hover
+  // Animations for feature hover
   const featureInfoAnimation = {
     initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
@@ -218,46 +218,59 @@ export default function EnhancedPlanComparison() {
     transition: { duration: 0.2 }
   };
   
+  // Function to check if a plan is disabled (Premium and Team are disabled)
+  const isPlanDisabled = (planKey: string) => {
+    return planKey === 'PREMIUM' || planKey === 'TEAM';
+  };
+  
   return (
     <div className="w-full max-w-6xl mx-auto">
-      {/* Toggle per fatturazione annuale/mensile */}
+      {/* Toggle for annual/monthly billing */}
       <div className="mb-8 flex justify-center">
         <div className="bg-surface-dark rounded-lg p-1 flex items-center">
           <button
             className={`px-4 py-2 rounded-md ${!isYearly ? 'bg-primary text-white' : 'text-white/70'}`}
             onClick={() => setIsYearly(false)}
           >
-            Mensile
+            Monthly
           </button>
           <button
             className={`px-4 py-2 rounded-md ${isYearly ? 'bg-primary text-white' : 'text-white/70'}`}
             onClick={() => setIsYearly(true)}
           >
-            Annuale <span className="text-xs ml-1 text-green-400">-{discount}%</span>
+            Annual <span className="text-xs ml-1 text-green-400">-{discount}%</span>
           </button>
         </div>
       </div>
       
-      {/* Cards dei piani */}
+      {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         {Object.entries(PLANS).map(([planKey, plan]) => {
           const price = getPlanPrice(plan.monthlyPrice || 0, isYearly);
           const isCurrentPlan = subscription.plan === planKey && subscription.isActive;
           const isPopular = planKey === 'PREMIUM';
+          const planDisabled = isPlanDisabled(planKey);
           
           return (
             <motion.div
               key={planKey}
               className={`glass-panel p-6 rounded-lg flex flex-col relative ${
                 isPopular ? 'border-2 border-primary ring-1 ring-primary/30' : ''
-              }`}
+              } ${planDisabled ? 'opacity-80' : ''}`}
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.3, delay: planKey === 'FREE' ? 0 : planKey === 'PREMIUM' ? 0.1 : 0.2 }}
             >
+              {/* Add red X for disabled plans */}
+              {planDisabled && (
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <FiX className="text-red-500" size={48} />
+                </div>
+              )}
+              
               {isPopular && (
                 <div className="absolute top-0 right-0 bg-primary text-white text-xs px-3 py-1 rounded-bl-lg rounded-tr-lg font-medium">
-                  Più popolare
+                  Most popular
                 </div>
               )}
               
@@ -269,7 +282,7 @@ export default function EnhancedPlanComparison() {
                   <span className="text-white/50 ml-1 text-sm">/{billingPeriod}</span>
                 </div>
               ) : (
-                <div className="text-3xl font-bold mb-4">Gratuito</div>
+                <div className="text-3xl font-bold mb-4">Free</div>
               )}
               
               <p className="text-white/70 mb-6">{plan.description}</p>
@@ -294,22 +307,28 @@ export default function EnhancedPlanComparison() {
                       : planKey === 'FREE'
                         ? 'bg-white/10 hover:bg-white/20 text-white'
                         : 'bg-primary/20 hover:bg-primary/30 text-primary'
-                }`}
-                onClick={() => isPopular ? handleSubscribe(planKey) : router.push('/dashboard/subscription')}
-                disabled={isLoading || isCurrentPlan}
+                } ${planDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => {
+                  if (!planDisabled) {
+                    isPopular ? handleSubscribe(planKey) : router.push('/dashboard/subscription');
+                  }
+                }}
+                disabled={isLoading || isCurrentPlan || planDisabled}
               >
-                {isLoading && planKey === 'PREMIUM' ? (
+                {isLoading && planKey === 'PREMIUM' && !planDisabled ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Elaborazione...</span>
+                    <span>Processing...</span>
                   </span>
                 ) : isCurrentPlan ? (
-                  <span>Piano attuale</span>
+                  <span>Current plan</span>
                 ) : planKey === 'FREE' ? (
-                  <span>Piano base</span>
+                  <span>Basic plan</span>
+                ) : planDisabled ? (
+                  <span>Currently unavailable</span>
                 ) : (
                   <span className="flex items-center gap-1">
-                    {isPopular ? 'Inizia subito' : 'Scopri di più'}
+                    {isPopular ? 'Get started' : 'Learn more'}
                     <FiArrowRight size={16} />
                   </span>
                 )}
@@ -319,15 +338,15 @@ export default function EnhancedPlanComparison() {
         })}
       </div>
       
-      {/* Tabella di confronto dettagliata */}
+      {/* Detailed comparison table */}
       <div className="glass-panel p-6 rounded-lg">
-        <h2 className="text-xl font-bold mb-6 text-center">Confronto dettagliato dei piani</h2>
+        <h2 className="text-xl font-bold mb-6 text-center">Detailed Plan Comparison</h2>
         
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/10">
-                <th className="py-4 px-4 text-left w-1/4">Funzionalità</th>
+                <th className="py-4 px-4 text-left w-1/4">Feature</th>
                 <th className="py-4 px-4 text-center">Free</th>
                 <th className="py-4 px-4 text-center bg-primary/5">Premium</th>
                 <th className="py-4 px-4 text-center">Team</th>
@@ -386,34 +405,34 @@ export default function EnhancedPlanComparison() {
       
       {/* FAQ section */}
       <div className="mt-12">
-        <h2 className="text-xl font-bold mb-6 text-center">Domande frequenti</h2>
+        <h2 className="text-xl font-bold mb-6 text-center">Frequently Asked Questions</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="glass-panel p-6 rounded-lg">
-            <h3 className="font-bold mb-2">Posso cambiare piano in qualsiasi momento?</h3>
+            <h3 className="font-bold mb-2">Can I change plans at any time?</h3>
             <p className="text-white/70">
-              Sì, puoi passare a un piano superiore in qualsiasi momento. Il passaggio a un piano inferiore è possibile alla fine del periodo di fatturazione.
+              Yes, you can upgrade to a higher plan at any time. Downgrading to a lower plan is possible at the end of the billing period.
             </p>
           </div>
           
           <div className="glass-panel p-6 rounded-lg">
-            <h3 className="font-bold mb-2">Come funziona la prova gratuita?</h3>
+            <h3 className="font-bold mb-2">How does the free trial work?</h3>
             <p className="text-white/70">
-              Offriamo una prova gratuita di 14 giorni per i piani Premium e Team. Non è richiesta alcuna carta di credito per iniziare.
+              We offer a 14-day free trial for Premium and Team plans. No credit card is required to start.
             </p>
           </div>
           
           <div className="glass-panel p-6 rounded-lg">
-            <h3 className="font-bold mb-2">Cosa succede ai miei dati se cancello l'abbonamento?</h3>
+            <h3 className="font-bold mb-2">What happens to my data if I cancel my subscription?</h3>
             <p className="text-white/70">
-              I tuoi dati verranno conservati per 30 giorni dopo la cancellazione. Puoi sempre esportarli prima di chiudere l'account.
+              Your data will be retained for 30 days after cancellation. You can always export it before closing your account.
             </p>
           </div>
           
           <div className="glass-panel p-6 rounded-lg">
-            <h3 className="font-bold mb-2">Quali metodi di pagamento accettate?</h3>
+            <h3 className="font-bold mb-2">What payment methods do you accept?</h3>
             <p className="text-white/70">
-              Accettiamo tutte le principali carte di credito, PayPal e, per i clienti aziendali, bonifici bancari.
+              We accept all major credit cards, PayPal, and, for business customers, bank transfers.
             </p>
           </div>
         </div>
@@ -421,17 +440,17 @@ export default function EnhancedPlanComparison() {
       
       {/* Call to action */}
       <div className="mt-12 glass-panel p-8 rounded-lg bg-gradient-to-r from-primary/20 to-secondary/20 text-center">
-        <h2 className="text-2xl font-bold mb-3">Pronto a potenziare il tuo ambiente di lavoro?</h2>
+        <h2 className="text-2xl font-bold mb-3">Ready to boost your work environment?</h2>
         <p className="text-white/70 mb-6 max-w-2xl mx-auto">
-          Sblocca tutte le funzionalità e porta la tua produttività al livello successivo con Jarvis Web OS Premium.
+          Unlock all features and take your productivity to the next level with Jarvis Web OS Premium.
         </p>
         <button 
-          className="px-6 py-3 bg-primary hover:bg-primary-dark rounded-lg font-medium"
-          onClick={() => handleSubscribe('PREMIUM')}
+          className="px-6 py-3 bg-primary/50 rounded-lg font-medium cursor-not-allowed opacity-60"
+          disabled={true}
         >
-          Prova gratis per 14 giorni
+          Premium plans coming soon
         </button>
-        <p className="mt-3 text-sm text-white/50">Nessuna carta di credito richiesta. Cancella in qualsiasi momento.</p>
+        <p className="mt-3 text-sm text-white/50">Currently only the Free plan is available.</p>
       </div>
     </div>
   );
