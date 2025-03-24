@@ -1,0 +1,14 @@
+{
+    "buildCommand": "npm run vercel-build",
+    "installCommand": "npm install",
+    "framework": "nextjs",
+    "outputDirectory": ".next",
+    "git": {
+      "deploymentEnabled": {
+        "main": true
+      }
+    },
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
