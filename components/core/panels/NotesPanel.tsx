@@ -144,9 +144,14 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
           setAvailableTags(tags);
         } catch (error) {
           console.error("Errore nel recupero delle note:", error);
-          toast.error("You must be logged in to delete notes");
+          toast.error("Error loading notes");
+        } finally {
+          // Always set loading to false, whether successful or not
           setIsLoading(false);
         }
+      } else {
+        // Also handle the case when user is not logged in
+        setIsLoading(false);
       }
     };
     
@@ -177,7 +182,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
   // Gestisce la creazione di una nuova nota
   const handleCreateNote = () => {
     if (!session?.user?.id) {
-      toast.error("Unable to load notes");
+      toast.error("You must be logged in to create notes");
       return;
     }
     
@@ -213,13 +218,14 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
       setSelectedNote(null);
     } catch (error) {
       console.error("Errore nel salvataggio della nota:", error);
+      toast.error("Error saving note");
     }
   };
 
   // Gestisce l'eliminazione di una nota
   const handleDeleteNote = async (noteId: string) => {
     if (!session?.user?.id) {
-      toast.error("You must be logged in to save notes");
+      toast.error("You must be logged in to delete notes");
       return;
     }
     
@@ -240,6 +246,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
       setAvailableTags(updatedTags);
     } catch (error) {
       console.error("Errore nell'eliminazione della nota:", error);
+      toast.error("Error deleting note");
     }
   };
 
@@ -297,7 +304,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
           <FiSearch style={{ marginRight: '8px', color: 'rgba(255, 255, 255, 0.5)' }} />
           <input 
             type="text" 
-            placeholder="Cerca nelle note..." 
+            placeholder="Search notes..." 
             style={styles.searchInput}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -319,7 +326,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
               ...(viewMode === 'grid' ? styles.activeFilter : {})
             }}
             onClick={() => setViewMode('grid')}
-            title="Vista griglia"
+            title="Grid view"
           >
             <FiGrid />
           </button>
@@ -330,7 +337,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
               ...(viewMode === 'list' ? styles.activeFilter : {})
             }}
             onClick={() => setViewMode('list')}
-            title="Vista lista"
+            title="List view"
           >
             <FiList />
           </button>
@@ -340,7 +347,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
             onClick={handleCreateNote}
           >
             <FiPlus />
-            <span>Nuova nota</span>
+            <span>New note</span>
           </button>
         </div>
       </div>
@@ -358,7 +365,7 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
               onClick={() => setSelectedTag(null)}
             >
               <FiFilter style={{ marginRight: '4px' }} />
-              Tutti
+              All
             </button>
             
             {availableTags.map(tag => (
@@ -387,8 +394,8 @@ const NotesPanel: React.FC<NotesPanelProps> = ({ panel }) => {
               exit={{ opacity: 0 }}
             >
               {searchTerm || selectedTag ? 
-                'Nessuna nota corrisponde ai criteri di ricerca.' : 
-                'Non hai ancora nessuna nota. Crea la tua prima nota!'}
+                'No notes match your search criteria.' : 
+                'You don\'t have any notes yet. Create your first note!'}
             </motion.div>
           ) : (
             <div style={viewMode === 'grid' ? styles.gridContainer : styles.listContainer}>
