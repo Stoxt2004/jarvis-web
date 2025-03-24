@@ -435,67 +435,17 @@ export default function HomeClient() {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="relative z-10 mt-12 w-full max-w-5xl"
         >
-          <motion.div 
-            className="p-2 shadow-xl rounded-lg overflow-hidden border border-white/10 backdrop-blur-md"
-            style={{ background: `rgba(26, 26, 46, 0.5)` }}
-            whileHover={{ 
-              boxShadow: `0 25px 50px -12px rgba(167, 139, 250, 0.25)`,
-              y: -5
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="relative pt-[56.25%] rounded-md overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-full h-full flex items-center justify-center" style={{ 
+          <div className="w-full h-full flex items-center justify-center" style={{ 
                   background: `linear-gradient(135deg, ${colors.surface} 0%, ${colors.background} 100%)`
                 }}>
-                  <motion.div 
-                    className="text-white/30 text-lg p-8 flex flex-col items-center"
-                    animate={{ 
-                      scale: [1, 1.02, 1],
-                      opacity: [0.7, 1, 0.7]
-                    }}
-                    transition={{ 
-                      duration: 4, 
-                      repeat: Infinity,
-                      repeatType: 'reverse'
-                    }}
-                  >
-                    <motion.div 
-                      className="w-16 h-16 rounded-full mb-4 flex items-center justify-center"
-                      style={{ background: `rgba(${parseInt(colors.primary.slice(1, 3), 16)}, ${parseInt(colors.primary.slice(3, 5), 16)}, ${parseInt(colors.primary.slice(5, 7), 16)}, 0.2)` }}
-                      animate={{ 
-                        boxShadow: [
-                          `0 0 0 rgba(${parseInt(colors.primary.slice(1, 3), 16)}, ${parseInt(colors.primary.slice(3, 5), 16)}, ${parseInt(colors.primary.slice(5, 7), 16)}, 0)`,
-                          `0 0 20px rgba(${parseInt(colors.primary.slice(1, 3), 16)}, ${parseInt(colors.primary.slice(3, 5), 16)}, ${parseInt(colors.primary.slice(5, 7), 16)}, 0.5)`,
-                          `0 0 0 rgba(${parseInt(colors.primary.slice(1, 3), 16)}, ${parseInt(colors.primary.slice(3, 5), 16)}, ${parseInt(colors.primary.slice(5, 7), 16)}, 0)`
-                        ]
-                      }}
-                      transition={{ 
-                        duration: 2, 
-                        repeat: Infinity,
-                        repeatType: 'loop'
-                      }}
-                    >
-                      <motion.div 
-                        className="w-8 h-8 rounded-full"
-                        style={{ background: colors.primary }}
-                        animate={{ 
-                          scale: [1, 1.2, 1]
-                        }}
-                        transition={{ 
-                          duration: 2, 
-                          repeat: Infinity,
-                          repeatType: 'reverse'
-                        }}
-                      ></motion.div>
-                    </motion.div>
-                    Anteprima dell'interfaccia Jarvis Web OS
-                  </motion.div>
+                  
+                    <img 
+                      src="/home.png" 
+                      alt="Jarvis Web OS Interface" 
+                      className="w-full h-auto rounded-md shadow-2xl border border-white/10"
+                    />
+                  
                 </div>
-              </div>
-            </div>
-          </motion.div>
         </motion.div>
       </section>
       {/* Features */}
