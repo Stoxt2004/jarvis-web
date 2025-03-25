@@ -113,19 +113,19 @@ export default function Workspace() {
       </AnimatePresence>
 
       {/* Dock per creare nuove app */}
+      <div className="fixed bottom-6 w-full flex justify-center" style={{ zIndex: 200 }}>
       <motion.div 
-        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 rounded-full"
-        style={{ 
-          background: `rgba(26, 26, 46, 0.8)`,
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)',
-          zIndex: 40 // Assicura che sia sopra altri elementi
-        }}
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
-      >
+    className="flex items-center gap-2 p-2 rounded-full"
+    style={{ 
+      background: `rgba(26, 26, 46, 0.8)`,
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3)'
+    }}
+    initial={{ y: 100, opacity: 0 }}
+    animate={{ y: 0, opacity: 1 }}
+    transition={{ duration: 0.5, delay: 0.7 }}
+  >
         {(['dashboard', 'editor', 'fileManager', 'terminal', 'notes', 'calendar'] as PanelType[]).map((type) => (
           <motion.button
             key={type}
@@ -146,6 +146,7 @@ export default function Workspace() {
           </motion.button>
         ))}
       </motion.div>
+      </div>
     </div>
   )
 }
